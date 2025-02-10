@@ -90,19 +90,19 @@ python main.py
 - ❌ 开放捐赠入口
 - ❌ 插件功能
 
-到 [议题](https://github.com/baiyao105/class-manager/issues) 页面查看所有被请求的功能 (以及已知的问题) 。
+到 [议题](https://gitee.com/JustNothing_1021/Class-Manager/issues) 页面查看所有被请求的功能 (以及已知的问题) 。
 
 ## 🤝 参与贡献
 如果这个项目对您有帮助，请点亮 Star⭐️ 星标！
 欢迎贡献、问题反馈和新功能请求。<br />
-请查阅 [议题](https://github.com/baiyao105/class-manager/issues) 页面后进行贡献<br />
+请查阅 [议题](https://gitee.com/JustNothing_1021/Class-Manager/issues) 页面后进行贡献<br />
 
 ## 📝 LICENSE
 [![GPLv3 Logo](https://www.gnu.org/graphics/gplv3-127x51.png)](https://www.gnu.org/licenses/gpl-3.0.html)
-本项目采用 [GPL v3.0](https://github.com/baiyao105/class-manager/blob/master/LICENSE) 许可协议分发。
+本项目采用 [GPL v3.0](https://gitee.com/JustNothing_1021/Class-Manager/blob/master/LICENSE) 许可协议分发。
 
 ```legal
 本程序是自由软件🧊
 ```
 
-_**该README由 [baiyao105](https://github.com/baiyao105) 编写**_
+_**该README由 [baiyao105](https://gitee.com/baiyao105) 编写**_
