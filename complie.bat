@@ -1,0 +1,1 @@
+pyinstaller main_pyside6.py  --noconsole --exclude PyQt5 -i icon.ico

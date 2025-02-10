@@ -1,0 +1,1 @@
+start pyside6-designer
