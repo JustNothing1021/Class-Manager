@@ -55,13 +55,23 @@
 [![视频演示](img/fun.png)](https://www.bilibili.com/video/BV1uT4y1P7CX)
 
 ## ♿ 开始使用
-- 以debug运行: `python main.py` (提前安装依赖库)
+### - 以debug运行: 
+```
+git clone https://gitee.com/JustNothing_1021/Class-Manager.git
+cd Class-Manager
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+python main.py
+```
 - (才不是因为懒不想编译!)
 
 | 组件       | 版本  | 备注       |
 | ---------- | ----- | ---------- |
 | Python     | ≥3.8 | 推荐3.8.10+  |
-| PySide6    | ≥6.4 | UI |
+| PySide6    | ≥6.6.3.1 | UI组件 |
+| PySide6_Addons    | ≥6.6.3.1 | UI组件 |
+| PySide6_Essentials    | ≥6.6.3.1 | UI组件 |
+| ...... | ≥...... | 详见 'requirements.txt' 内容|
+
 
 ## ✔️ TODO
 - ❌ 全局UI重构
