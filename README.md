@@ -62,6 +62,8 @@ cd Class-Manager
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 python main.py
 ```
+> #### **Tips:**
+> "-i https://pypi.tuna.tsinghua.edu.cn/simple" 为使用清华镜像源,加速下载;不用可忽略
 - (才不是因为懒不想编译!)
 
 | 组件       | 版本  | 备注       |
