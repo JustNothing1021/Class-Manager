@@ -1781,7 +1781,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         Base.log("E", "这是错误信息", "MainWindow.mainloop")
         Base.log("C", "这是致命错误信息", "MainWindow.mainloop")
         self.icon = QIcon()
-        self.icon.addPixmap(QPixmap("icon.ico"), QIcon.Mode.Normal, QIcon.State.Off)
+        self.icon.addPixmap(QPixmap("img/favicon.ico"), QIcon.Mode.Normal, QIcon.State.Off)
         self.setWindowIcon(self.icon)
         self.show()
         status = self.app.exec()

@@ -465,7 +465,7 @@ DEFAULT_ACHIEVEMENTS:Dict[str, AchievementTemplate] = {
                                                     lowest_score_range=(ninf, -20),
                                                     score_range=(1, inf),
                                                     sound=SOUND_BRUH,
-                                                    icon="icon/beyond_life_and_death.jpg",
+                                                    icon="img/tips/beyond_life_and_death.jpg",
                                                     condition_info="一周分数达到-20后回正",
                                                     further_info="""其实我们做出来就好奇会不会真的有人会达成这个成就"""),
 
@@ -482,7 +482,7 @@ DEFAULT_ACHIEVEMENTS:Dict[str, AchievementTemplate] = {
 
         "top_of_life_2": AchievementTemplate("top_of_life_2", "人生癫疯", "这次是真的无敌辣！", 
                                         score_range=(-inf, -20), score_rank_range=(-1, -1), highest_score_range=(-inf, 20),
-                                        icon="icon/top_of_life_2.jpg",
+                                        icon="img/tips/top_of_life_2.jpg",
                                         condition_info="分数<=-20，获得班上分数倒数第一",
                                         further_info="""从某种意义上也算是稳定发挥了"""),
         
