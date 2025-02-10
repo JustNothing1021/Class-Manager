@@ -1745,11 +1745,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     def config_data(self,
                     path:   str  = os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas",
                     silent: bool = False,
-                    strict: bool = False):
+                    strict: bool = False,
+                    reset_missing: bool = True):
         "加载数据并设置"
         self.load_succeed = False
         Base.log("I", "加载数据并设置", "MainWindow.config_data")
-        super().config_data(path, silent, strict)
+        super().config_data(path, silent, strict, reset_missing)
         if self.load_succeed:
             self.show_tip("数据加载成功", self, 5000)
             Base.log("I", "数据加载成功", "MainWindow.config_data")

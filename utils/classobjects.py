@@ -1446,7 +1446,6 @@ class AchievementStatusObserver(Object):
                         if self.tps:
                             time.sleep(max((1 / self.tps) - (time.time() - last_frame_time), 0))
                         last_frame_time = time.time()
-                        t1 = time.time()
                         for s in list(self.classes[self.class_id].students.values()): # 笑死我了经典O2
                             for a in list(self.achievement_templates.keys()):         #        -- 某个做数论题都用dfs的人
                                 if self.achievement_templates[a].achieved(s, self.class_obs) and (
