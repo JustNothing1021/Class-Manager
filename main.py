@@ -4191,12 +4191,12 @@ class HomeWorkSumUpWidget(HomeworkScoreSumUp.Ui_Form, MyWidget):
         self.comboBox.clear()
         self.sent_list:Dict[int, List[ScoreModification]] = {}
         "已经发送的列表"
-        error_template = ScoreModificationTemplate("出错了", 0, "出错了", "出错了")
+        error_template = ScoreModificationTemplate("error", 0, "没有内置的作业常规分方案", "请完善default.py中Class的homework_rule")
         self.subject_list:Dict[int, HomeworkRule] = {-1: HomeworkRule(
            "error",
-           "出错了",
+           "列表为空",
            "",
-           {"出错了", error_template})}
+           {"列表为空": error_template})}
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_buttons)
         self.update_timer.start(100)

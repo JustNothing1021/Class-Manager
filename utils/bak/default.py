@@ -158,7 +158,8 @@ DEFAULT_CLASSES: OrderedKeyList[Class] = OrderedKeyList([
                 55: Student("55号学生", 55, 0.0, "CLASS_TEST", {}, achievements={}, belongs_to_group="group_4")
             },
         "CLASS_TEST",
-        {},
+        {}, 
+        {}, 
         {
             "Chinese": HomeworkRule(
                     "Chinese",

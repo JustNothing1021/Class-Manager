@@ -4,6 +4,8 @@ import dill as pickle
 from types import MethodType, FunctionType
 import os
 from utils.base import Base
+from utils.update_check import CLIENT_VERSION, CLIENT_VERSION_CODE
+
 class SettingsInfo:
         """设置信息"""
 
@@ -18,8 +20,8 @@ class SettingsInfo:
         def reset(self) -> "SettingsInfo":
             "重置设置"
             if not hasattr(self, "client_version"):
-                self.client_version = "1.4.4"
-                self.client_version_code = 10404
+                self.client_version = CLIENT_VERSION
+                self.client_version_code = CLIENT_VERSION_CODE
             self.opacity = 0.82
             self.score_up_color_mixin_begin = (0xca, 0xff, 0xca) 
             self.score_up_color_mixin_end = (0x33, 0xcf, 0x6c)
