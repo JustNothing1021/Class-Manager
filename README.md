@@ -4,10 +4,10 @@
 <h1 align="center">欢迎使用 班寄管理 👋</h1>
 <p align="center">更好的班级管理</p>
 <div align="center">
-  <a href="#-🤔 关于本项目">关于</a> •
-  <a href="#-✨ 演示">演示</a> •
-  <a href="#♿ 开始使用">开始使用</a> •
-  <a href="#-✔️ TO DO List">TODO</a>
+  <a href="#-关于本项目">关于</a> •
+  <a href="#-演示">演示</a> •
+  <a href="#-开始使用">开始使用</a> •
+  <a href="#-to-do-list">TODO</a>
 </div>
 
 
