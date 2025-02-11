@@ -28,7 +28,7 @@
 ### 基本操作
 1. **添加扣/加分模板**
 <p align="center">
-  <img width="700" align="center" src="img/fun.png" alt="添加模板"/>
+  <img width="700" align="center" src="img/examples/create_score_template.png" alt="添加模板"/>
 </p>
 
 1. **分数统计**
