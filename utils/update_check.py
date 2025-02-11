@@ -17,7 +17,7 @@ TOKEN = "9bde0e6b1c0fca0ff36408665fb75306"
 
 AUTHOR = "JustNothing_1021"
 
-REPO_NAME = "class_manager"
+REPO_NAME = "Class-Manager"
 
 MASTER = "master"
 
@@ -380,7 +380,7 @@ def unzip_to_dir(path:str="update.zip", dir:str="update"):
 def update(dir:str="update"):
     """更新。"""
     try:
-        shutil.copytree(os.path.join(dir, "class_manager-master"), os.getcwd(), dirs_exist_ok=True)
+        shutil.copytree(os.path.join(dir, f"{REPO_NAME}-{MASTER}"), os.getcwd(), dirs_exist_ok=True)
     except Exception as e:
         print("更新失败，请手动更新")
         print(f"错误：[{e.__class__.__name__}] {e}")

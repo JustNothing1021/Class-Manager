@@ -1,1 +1,0 @@
-pyinstaller main.py  --noconsole --exclude PyQt5 -i img/favicon.ico

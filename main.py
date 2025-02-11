@@ -820,6 +820,10 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         if hasattr(self, "current_frame") and self.use_animate_background:
             pixmap = QPixmap.fromImage(self.current_frame)
         else:
+            if not os.path.exists("./img/main/background.jpg"):
+                # 为了防止更新的时候给原有的background.jpg覆盖了
+                shutil_copy("./img/main/default/background.jpg", "./img/main/background.jpg")
+
             pixmap = QPixmap("./img/main/background.jpg")
 
         painter.drawPixmap(-padding, -padding, self.width() + padding * 2, self.height() + padding * 2, pixmap)
