@@ -1,5 +1,6 @@
 import random
-from PySide6.QtWidgets import QWidget, QMessageBox
+from PySide6.QtWidgets import QWidget, QMessageBox, QPushButton
+from PySide6.QtGui import QPixmap
 from typing import Optional, Literal
 
 def button_ok_text():
@@ -30,15 +31,27 @@ def button_reject_text():
         "下辈子再说",
     ])
 
-def question_yes_no(master:Optional[QWidget], title:str, text:str, default:bool=True, type:Literal["question", "information", "warning", "critical"]="question") -> bool:
+def question_yes_no(master:Optional[QWidget], 
+                    title:str, text:str, 
+                    default:bool=True, 
+                    type:Literal["question", "information", "warning", "critical"]="question", 
+                    pixmap: Optional[QPixmap] = None) -> bool:
     if type == "question":
         box = QMessageBox(QMessageBox.Icon.Question, title, text, parent=master)
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
+        # 后面加个favicon-question.png
+        # baiyao105如果你闲的没事的话帮我做一个（？
     elif type == "information":
         box = QMessageBox(QMessageBox.Icon.Information, title, text, parent=master)
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
     elif type == "warning":
         box = QMessageBox(QMessageBox.Icon.Warning, title, text, parent=master)
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
+        # 加个favicon-warn.png
     elif type == "critical":
         box = QMessageBox(QMessageBox.Icon.Critical, title, text, parent=master)
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
+
     
     box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
     box.setDefaultButton(QMessageBox.StandardButton.No if not default else QMessageBox.StandardButton.Yes)

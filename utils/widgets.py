@@ -22,15 +22,30 @@ class ObjectButton(QPushButton):
             self.setStyleSheet("""\
     QPushButton {
         font: 8pt;
-        background-color: rgba(%d, %d, %d, 162);
+        background-color: rgba(%d, %d, %d, %d);
         border-radius: 2px;
         border: 1px solid rgb(0, 0, 0);
     }
-""" % (col.red(), col.green(), col.blue()))
+""" % (col.red(), col.green(), col.blue(), self.opacity))
+            
+        @property
+        def opacity(self):
+            return self._opacity
+        
+        @opacity.setter
+        def opacity(self, opacity: int):
+            self._opacity = opacity
+            self._set_color(self.background_color)
+
+        
 
         color = Property(QColor, fset=_set_color)
 
-        def __init__(self, text:str, parent=None, icon:Union[QIcon, QPixmap]=None, object:Union[Student, Group]=None):
+        def __init__(self, 
+                     text:str, 
+                     parent=None, 
+                     icon:Union[QIcon, QPixmap]=None, 
+                     object:Union[Student, Group]=None):
 
             """构造函数
             
@@ -46,14 +61,15 @@ class ObjectButton(QPushButton):
             self.object = object
             self.anim_border:QPropertyAnimation = None
             self.background_color = QColor(255, 255, 255)
+            self._opacity = 162
             self.setStyleSheet(QCoreApplication.translate("Form", """\
     QPushButton {
         font: 8pt;
-        background-color: rgba(255, 255, 255, 162);
+        background-color: rgba(255, 255, 255, %d);
         border-radius: 2px;
         border: 1px solid rgb(0, 0, 0);
     }
-"""))
+""" % self._opacity))
 
 
         def setOpacity(self, opacity:float):
