@@ -28,12 +28,12 @@
 ### 基本操作
 1. **添加扣/加分模板**
 <p align="center">
-  <img width="700" align="center" src="img/examples/create_score_template.png" alt="添加模板"/>
+  <img width="700" align="center" src="img/demo/create_score_template.png" alt="添加模板"/>
 </p>
 
 1. **分数统计**
 <p align="center">
-  <img width="700" align="center" src="img/fun.png" alt="分数统计"/>
+  <img width="700" align="center" src="img/demo/fun.png" alt="分数统计"/>
 </p>
 <table>
   <tr>
@@ -42,9 +42,9 @@
     <td width="33%"><img src="img/demo_add.up.gif" alt="分数统计"></td>
     <td width="33%"><img src="img/demo_layout.png" alt="界面布局"></td>
     -->
-    <td width="33%"><img src="img/fun.png" alt="模板管理"></td>
-    <td width="33%"><img src="img/fun.png" alt="分数统计"></td>
-    <td width="33%"><img src="img/fun.png" alt="界面布局"></td>
+    <td width="33%"><img src="img/demo/fun.png" alt="模板管理"></td>
+    <td width="33%"><img src="img/demo/fun.png" alt="分数统计"></td>
+    <td width="33%"><img src="img/demo/fun.png" alt="界面布局"></td>
   </tr>
   <tr>
     <td align="center">模板化评分</td>
@@ -53,7 +53,7 @@
   </tr>
 </table>
 
-[![视频演示](img/fun.png)](https://www.bilibili.com/video/BV1uT4y1P7CX)
+[![视频演示](img/demo/fun.png)](https://www.bilibili.com/video/BV1uT4y1P7CX)
 
 ## ♿ 开始使用
 ### - 以debug运行: 
