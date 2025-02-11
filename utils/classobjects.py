@@ -262,6 +262,10 @@ class ClassObj(ClassDataObj):
             Base.log("I", "尝试加载旧版本的存档，缺失的数据已经用默认代替", "ClassObjects.load_data_and_set")
 
         self.classes:Dict[str, "ClassObj.Class"] = data["classes"]
+        if isinstance(self.classes, OrderedKeyList):
+            self.classes = self.classes.to_dict() # 因为出了点抽象bug
+                                                  # OrderedKeyList的一堆bug我以后再修吧（
+
         if hasattr(self, "target_class") and self.target_class is not None:
             self.target_class = self.classes[self.target_class.key]
         else:

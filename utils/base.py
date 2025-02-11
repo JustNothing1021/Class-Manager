@@ -39,6 +39,7 @@ from types import TracebackType
 from abc import ABC, abstractmethod
 import random
 
+os.makedirs(os.getcwd() + "/log", exist_ok=True)
 def utc(prec: int = 3):
     "获取当前UTC时间"
     return int(time.time() * (10 ** prec))

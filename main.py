@@ -45,7 +45,7 @@ from   utils.classobjects  import (CORE_VERSION, CORE_VERSION_CODE, VERSION_INFO
 from   utils.consts        import app_style, app_stylesheet, nl
 from   utils.functions     import exc_info_short, pass_exceptions
 from   utils.widgets       import ObjectButton, ProgressAnimatedListWidgetItem, SideNotice
-from   utils.prompts       import question_yes_no
+from   utils.prompts       import question_yes_no as question_yes_no_orig
 from   utils.settings      import SettingsInfo
 from   utils.base          import null
 from   utils.system        import system, SystemLogger, output_list, stderr_queue, stdout_queue
@@ -72,6 +72,7 @@ widget:              "MainWindow"
 "主窗口"
 ctrlc_times = 0
 "ctrl+c按下的次数"
+
 
 
 def exception_handler(exc_type: Type[BaseException], exc_value: BaseException, exc_tb: TracebackType):
@@ -118,6 +119,14 @@ except ImportError:
     pass
 
 
+def question_yes_no(master:Optional[QWidget], 
+                    title:str, text:str, 
+                    default:bool=True, 
+                    type:Literal["question", "information", "warning", "critical"]="question", 
+                    pixmap: Optional[QPixmap] = None) -> bool:
+    "寻问用户（是或否）"
+    Base.log("I", f"询问框：{repr(title)} - {repr(text)}，default={repr(default)}，type={repr(type)}，pixmap={repr(pixmap)}")
+    return question_yes_no_orig(master, title, text, default, type, pixmap)
 
 def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
     """自定义的异常消息处理函数"""
@@ -425,6 +434,9 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     stu_list_button_update = Signal()
     """学生列表按钮更新信号"""
 
+    label_update = Signal()
+    """标签更新信号"""
+
     def __init__(self, *args, class_name="2216班", current_user=DEFAULT_USER, class_key="CLASS_2216"):
         """窗口初始化
 
@@ -521,6 +533,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.show_error.connect(lambda args: self._critical(*args))
         self.show_question.connect(lambda args: self._question_if_exec(*args))
         self.going_to_exit.connect(self.do_exit)
+        self.label_update.connect(self._update_label)
         self.framecount = 0
         "自上一秒以来的更新帧数"
         self.framerate = 0
@@ -603,22 +616,34 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
 
-    def _information(self, title, text):
-        Base.log("I", f"信息框：{repr(title)} - {repr(text)}", "MainWindow.information")
-        QMessageBox.information(self, title, text)
+    def _information(self, title, text, pixmap):
+        Base.log("I", f"信息框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.information")
+        msgbox = QMessageBox(QMessageBox.Icon.Information, title, text, QMessageBox.StandardButton.Ok, parent=self)
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
+        msgbox.exec_()
+
     
-    def _warning(self, title, text):
-        Base.log("W", f"警告框：{repr(title)} - {repr(text)}", "MainWindow.warning")
-        QMessageBox.warning(self, title, text)
+    def _warning(self, title, text, pixmap):
+        Base.log("W", f"警告框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.warning")
+        msgbox = QMessageBox(QMessageBox.Icon.Warning, title, text, QMessageBox.StandardButton.Ok, parent=self)
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
+        msgbox.exec_()
 
-    def _critical(self, title, text):
-        Base.log("C", f"错误框：{repr(title)} - {repr(text)}", "MainWindow.critical")
-        QMessageBox.critical(self, title, text)
 
-    def _question_if_exec(self, title, text, command):
-        Base.log("I", f"询问框：{repr(title)} - {repr(text)}", "MainWindow.question")
-        if QMessageBox.question(self, title, text) == QMessageBox.StandardButton.Yes:
+    def _critical(self, title, text, pixmap):
+        Base.log("C", f"错误框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.critical")
+        msgbox = QMessageBox(QMessageBox.Icon.Critical, title, text, QMessageBox.StandardButton.Ok, parent=self)
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
+        msgbox.exec_()
+
+    def _question_if_exec(self, title, text, command, pixmap):
+        Base.log("I", f"询问框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.question_if_exec")
+        msgbox = QMessageBox(QMessageBox.Icon.Question, title, text, 
+                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, parent=self)
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main"))
+        if msgbox.exec_() == QMessageBox.StandardButton.Yes:
             command()
+        
 
     class TipHandler(QThread):
         def __init__(self, parent:"MainWindow"):
@@ -653,17 +678,39 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                 self._parent.show_new_tip.emit(current)
             Base.log("I", "提示处理器线程结束", "MainWindow.TipHandler")
 
-    def information(self, title, text):
-        self.show_info.emit((title, text))
+    def information(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
+        """展示信息框
+        
+        :param title: 标题
+        :param text: 内容
+        :param pixmap: 图标"""
+        self.show_info.emit((title, text, pixmap))
 
-    def warning(self, title, text):
-        self.show_warning.emit((title, text))
+    def warning(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
+        """展示警告框
 
-    def critical(self, title, text):
-        self.show_error.emit((title, text))
+        :param title: 标题
+        :param text: 内容
+        :param pixmap: 图标"""
+        self.show_warning.emit((title, text, pixmap))
 
-    def question_if_exec(self, title, text, command):
-        self.show_question.emit((title, text, command))
+    def critical(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
+        """展示错误框
+
+        :param title: 标题
+        :param text: 内容
+        :param pixmap: 图标     
+        """
+        self.show_error.emit((title, text, pixmap))
+
+    def question_if_exec(self, title: str, text: str, command: Callable, pixmap: Optional[QPixmap]=None):
+        """展示询问框
+
+        :param title: 标题
+        :param text: 内容
+        :param command: 确定按钮的命令
+        :param pixmap: 图标"""  
+        self.show_question.emit((title, text, command, pixmap))
 
     @Slot()
     def music_selector(self):
@@ -1731,20 +1778,20 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self.insert_action("创建还原点", self.show_recovery_points, (162, 216, 162, 232, 255, 255), 30)
         
 
-
     def update_label(self):
-        "更新文本控件"
-        while self.is_running:
-            self.label_2.setText(QCoreApplication.translate("Form", F"班级名称：{self.target_class.name}"))
-            self.label_3.setText(QCoreApplication.translate("Form", F"班级人数：{len(self.target_class.students)}", None))
-            self.label_4.setText(QCoreApplication.translate("Form", F"班主任：  {self.target_class.owner}", None))
-            self.label_5.setText(QCoreApplication.translate("Form", F"班级总分：{round(sum([float(self.target_class.students[num].score) for num in self.target_class.students]), 1)}", None))
-            self.label_7.setText(QCoreApplication.translate("Form", f"更新率: {self.framerate}（窗口），{self.video_framerate}（背景）", None))
-            self.label_8.setText(QCoreApplication.translate("Form", f"当前运行时间: {time.time() - self.create_time:.1f} 秒", None))
-            self.label_9.setText(QCoreApplication.translate("Form", f"当前并行线程数: {threading.active_count()}", None))
-            self.label_10.setText(QCoreApplication.translate("Form", f"当前内存占用量: {psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024:.1f} MB", None))
-            self.label_11.setText(QCoreApplication.translate("Form", f"当前内部更新率: {self.class_observer_update_rate}/{self.class_obs.tps}（班级），{self.achievement_observer_update_rate}/{self.achievement_obs.tps}（成就）", None))
-            time.sleep(0.1)
+        """更新标签"""
+        self.label_update.emit()
+
+    def _update_label(self):
+        self.label_2.setText(QCoreApplication.translate("Form", F"班级名称：{self.target_class.name}"))
+        self.label_3.setText(QCoreApplication.translate("Form", F"班级人数：{len(self.target_class.students)}", None))
+        self.label_4.setText(QCoreApplication.translate("Form", F"班主任：  {self.target_class.owner}", None))
+        self.label_5.setText(QCoreApplication.translate("Form", F"班级总分：{round(sum([float(self.target_class.students[num].score) for num in self.target_class.students]), 1)}", None))
+        self.label_7.setText(QCoreApplication.translate("Form", f"更新率: {self.framerate}（窗口），{self.video_framerate}（背景）", None))
+        self.label_8.setText(QCoreApplication.translate("Form", f"当前运行时间: {time.time() - self.create_time:.1f} 秒", None))
+        self.label_9.setText(QCoreApplication.translate("Form", f"当前并行线程数: {threading.active_count()}", None))
+        self.label_10.setText(QCoreApplication.translate("Form", f"当前内存占用量: {psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024:.1f} MB", None))
+        self.label_11.setText(QCoreApplication.translate("Form", f"当前内部更新率: {self.class_observer_update_rate}/{self.class_obs.tps}（班级），{self.achievement_observer_update_rate}/{self.achievement_obs.tps}（成就）", None))
 
     def config_data(self,
                     path:   str  = os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas",
@@ -2011,7 +2058,8 @@ class UpdateThread(QThread):
                 f"界面版本：{CLIENT_VERSION}({CLIENT_VERSION_CODE}) -> {result['client_version']}({result['client_version_code']})\n"
                 f"核心版本：{CORE_VERSION}({CORE_VERSION_CODE}) -> {result['core_version']}({result['core_version_code']})\n\n"
                  "是否更新？",
-                lambda: update_self(self))
+                lambda: update_self(self),
+                QPixmap("./img/logo/favicon-update.png"))
 
             elif isinstance(result, bool):
                 Base.log("I", "当前是最新版本", "UpdateThread.detect_new_version")
@@ -3958,6 +4006,7 @@ class AttendanceInfoWidget(AttendanceInfoEdit.Ui_Form, MyWidget):
         col = 0
         for num, stu in self.target_class.students.items():
             self.stu_buttons[num] = ObjectButton(f"{stu.num} {stu.name}\n{f'{self.attending_state_to_string(self.stu_states[stu.num])}'}", self, object=stu)
+            self.stu_buttons[num].opacity = 255
             self.stu_buttons[num].setObjectName(u"AttendingStudentButton"+str(stu.num))
             self.stu_buttons[num].setGeometry(QRect(10 + col * (81 + 6), 8 + row * (51 + 4), 81, 51))
             self.stu_buttons[num].setParent(self.widget)
