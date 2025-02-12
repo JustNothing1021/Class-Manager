@@ -123,6 +123,7 @@ python main.py
 如果这个项目对您有帮助，请点亮 Star⭐️ 星标！
 欢迎贡献、问题反馈和新功能请求。<br />
 请查阅 [议题](https://gitee.com/JustNothing_1021/Class-Manager/issues) 页面后进行贡献<br />
+- 请注意: 在提交您的贡献之前阅读 [贡献准则](https://gitee.com/JustNothing_1021/Class-Manager/blob/master/CONTRIBUTING.md) 以后参与贡献
 
 ## 📝 LICENSE
 
