@@ -38,16 +38,13 @@ def question_yes_no(master:Optional[QWidget],
                     pixmap: Optional[QPixmap] = None) -> bool:
     if type == "question":
         box = QMessageBox(QMessageBox.Icon.Question, title, text, parent=master)
-        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
-        # 后面加个favicon-question.png
-        # baiyao105如果你闲的没事的话帮我做一个（？
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-help.png"))
     elif type == "information":
         box = QMessageBox(QMessageBox.Icon.Information, title, text, parent=master)
         box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
     elif type == "warning":
         box = QMessageBox(QMessageBox.Icon.Warning, title, text, parent=master)
-        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
-        # 加个favicon-warn.png
+        box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-warn.png"))
     elif type == "critical":
         box = QMessageBox(QMessageBox.Icon.Critical, title, text, parent=master)
         box.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))

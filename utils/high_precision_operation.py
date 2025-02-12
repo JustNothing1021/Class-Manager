@@ -1,4 +1,4 @@
-import os, sys, random
+import os, sys, random, math
 
 """
 NoneColdWind做的一个高精度运算类
@@ -83,6 +83,11 @@ class HighPrecisionOperation:
         else:
             result = self.basic_num / other_num
             return HighPrecisionOperation(result)
+
+    def nThRoot(self, n: int = 3):
+        string = ""
+        rest = 0
+        basic = float(self.basi)
         
     def involution(self, index: int = 1):
         result = self.basic_num ** index
@@ -471,6 +476,47 @@ class HighPrecision:
         elif isinstance(other_num, float) and not other_num.is_integer():
             raise TypeError(f"不能对浮点数进行按位运算（{other_num} 和 {self}）")
         return other_num.__and__(int(self))
+    
+    def nThRoot(self, n: int = 3):
+        raise NotImplementedError("还没写完")
+        # string = ""
+        # rest = 0
+        # basic = float(self.basic_num)
+        # list_1 = []
+        # fpl = 2
+        # if n < 0:
+        #     basic = 1 / basic
+        # elif n == 0:
+        #     class MathematicsError(Exception):...
+        #     raise MathematicsError("不被允许的数[0次根无法运算]")
+        
+        # if len(str(int(basic))) % n:
+        #     zeros = "0" * (n - (len(str(int(basic))) % n))
+        #     basic_num = zeros + str(int(basic))
+
+        # if len(basic_num.split(".")[-1]) % n:
+        #     zeros = "0" * (len(basic_num.split(".")[-1]))
+        #     basic_num = basic_num + zeros
+
+        # if len(basic_num.split(".")[-1]) / n <= fpl:
+        #     t = fpl - len(basic_num.split(".")[-1]) / n
+        #     zeros = "0" * (int(t) * 3)
+        #     basic_num = basic_num + zeros
+
+        # else:
+        #     lfd = [c for c in range(len(basic_num))]
+        #     nd = len(str(basic_num.split(".")[-1])) - 3 * fpl
+        #     lfd = lfd[:-nd]
+        #     basic_num = ""
+        #     for i in lfd:
+        #         basic_num += i
+
+        # need_td = 10 ** (len(basic_num.split(".")[-1]) / n)
+        # basic_str = basic_num.replace(".", "")
+
+
+
+
     
 
     

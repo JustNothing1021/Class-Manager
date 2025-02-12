@@ -626,7 +626,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     def _warning(self, title, text, pixmap):
         Base.log("W", f"警告框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.warning")
         msgbox = QMessageBox(QMessageBox.Icon.Warning, title, text, QMessageBox.StandardButton.Ok, parent=self)
-        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-warn.png"))
         msgbox.exec_()
 
 
@@ -640,7 +640,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         Base.log("I", f"询问框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.question_if_exec")
         msgbox = QMessageBox(QMessageBox.Icon.Question, title, text, 
                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, parent=self)
-        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main"))
+        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-question.png"))
         if msgbox.exec_() == QMessageBox.StandardButton.Yes:
             command()
         
