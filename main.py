@@ -13,6 +13,7 @@ import signal
 import platform
 import pickle
 import warnings
+import customtkinter
 import dill               as pickle
 import pyqtgraph          as pg
 import numpy              as np
@@ -620,28 +621,28 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         Base.log("I", f"信息框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.information")
         msgbox = QMessageBox(QMessageBox.Icon.Information, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
-        msgbox.exec_()
+        msgbox.exec()
 
     
     def _warning(self, title, text, pixmap):
         Base.log("W", f"警告框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.warning")
         msgbox = QMessageBox(QMessageBox.Icon.Warning, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-warn.png"))
-        msgbox.exec_()
+        msgbox.exec()
 
 
     def _critical(self, title, text, pixmap):
         Base.log("C", f"错误框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.critical")
         msgbox = QMessageBox(QMessageBox.Icon.Critical, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
-        msgbox.exec_()
+        msgbox.exec()
 
     def _question_if_exec(self, title, text, command, pixmap):
         Base.log("I", f"询问框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.question_if_exec")
         msgbox = QMessageBox(QMessageBox.Icon.Question, title, text, 
                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-question.png"))
-        if msgbox.exec_() == QMessageBox.StandardButton.Yes:
+        if msgbox.exec() == QMessageBox.StandardButton.Yes:
             command()
         
 
@@ -1276,6 +1277,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.set_settings(**settings.get_dict())
         self.set_settings(client_version_code=version_code, client_version=version)
         self.save_settings()
+
         
 
     def load_settings(self) -> SettingsInfo:
@@ -2005,12 +2007,13 @@ class UpdateThread(QThread):
                     self.lastest_grp_score[key] = grp.total_score
 
         def detect_update(self):
-            "检测是否有更新"
+            "检测是否有更新过"
             if self.mainwindow.client_version_code < CLIENT_VERSION_CODE:
                 play_sound("res/sounds/orb.ogg")
                 self.mainwindow.show_update_log()
                 self.mainwindow.client_version_code = CLIENT_VERSION_CODE
                 self.mainwindow.client_version = CLIENT_VERSION
+                self.mainwindow.save_current_settings()
 
         def detect_new_version(self):
             "检测是否有新版本"
@@ -2106,8 +2109,8 @@ class UpdateThread(QThread):
                             Base.log("W", "疑似添加/减少学生，正在重新加载", "UpdateThread.run")
                             self.mainwindow.grid_buttons()
                         if self.first_start:
-                            Thread(target=lambda: self.detect_new_version()).start()
-                            Thread(target=lambda: self.detect_update()).start()
+                            Thread(target=lambda: (time.sleep(8), self.detect_new_version())).start()
+                            Thread(target=lambda: (time.sleep(5), self.detect_update())).start()
                             self.first_start = False
                         self.refresh_progressbar()
                         time.sleep(0.5)

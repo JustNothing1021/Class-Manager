@@ -1,8 +1,8 @@
-from typing import Literal
+from typing import Literal, Any
 import pickle
+import os
 import dill as pickle
 from types import MethodType, FunctionType
-import os
 from utils.base import Base
 from utils.update_check import CLIENT_VERSION, CLIENT_VERSION_CODE
 
@@ -19,9 +19,11 @@ class SettingsInfo:
 
         def reset(self) -> "SettingsInfo":
             "重置设置"
+
             if not hasattr(self, "client_version"):
                 self.client_version = CLIENT_VERSION
                 self.client_version_code = CLIENT_VERSION_CODE
+                
             self.opacity = 0.82
             self.score_up_color_mixin_begin = (0xca, 0xff, 0xca) 
             self.score_up_color_mixin_end = (0x33, 0xcf, 0x6c)
@@ -54,9 +56,11 @@ class SettingsInfo:
             self.max_framerate = 60
             return self
 
+        # TODO: 修复保存和加载不正常的bug
 
         def save_to(self, file_path:str) -> "SettingsInfo":
             "保存设置"
+            Base.log("I", f"保存设置到{file_path}", "SettingsInfo.save_to")
             if not os.path.isdir(os.path.dirname(file_path)):
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
             try:
@@ -82,7 +86,7 @@ class SettingsInfo:
                 setattr(self, k, v)
             return self
         
-        def get(self, key:str) -> object:
+        def get(self, key:str) -> Any:
             "获取设置"
             return getattr(self, key)
 

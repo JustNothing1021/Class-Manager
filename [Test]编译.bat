@@ -16,5 +16,6 @@ pyinstaller main.py ^
   --add-data "src;src" ^
   --hidden-import PyQt6.QtWebEngine ^
   --exclude-module PyQt5 ^
-  --exclude-module PyQt6
+  --exclude-module PyQt6 ^
+  --noconfirm 
 pause
