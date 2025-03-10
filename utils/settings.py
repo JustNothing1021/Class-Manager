@@ -63,6 +63,7 @@ class SettingsInfo:
             Base.log("I", f"保存设置到{file_path}", "SettingsInfo.save_to")
             if not os.path.isdir(os.path.dirname(file_path)):
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            os.remove(file_path) if os.path.exists(file_path) else None
             try:
                 pickle.dump(self, open(file_path, "wb"))
             except Exception as e:
@@ -72,7 +73,8 @@ class SettingsInfo:
         def load_from(self, file_path:str) -> "SettingsInfo":
             "加载设置"
             try:
-                self.__dict__.update(pickle.load(open(file_path, "rb")).__dict__)
+                obj: "SettingsInfo" = pickle.load(open(file_path, "rb"))
+                self.__dict__.update(obj.get_dict())
             except Exception as e:
                 Base.log_exc("加载设置失败，将会返回默认", "SettingsInfo.load_from", exc=e)
                 self.reset()

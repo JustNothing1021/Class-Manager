@@ -79,20 +79,23 @@ ctrlc_times = 0
 def exception_handler(exc_type: Type[BaseException], exc_value: BaseException, exc_tb: TracebackType):
     """捕获异常并弹出错误框（给sys.excepthook用的）"""
     Base.log_exc("捕获到异常", "exception_handler", exc=exc_value)
-    try:
-        parent = widget
-    except NameError:
-        parent = None
     pagesize = 20
     exc_info = ["捕获到异常！\n"] + traceback.format_exception(exc_type, exc_value, exc_tb) + ["哇，我的程序果然没让我失望\n"]
     total = int(np.ceil(len(exc_info) / pagesize))
-    for i in range(total):
-        currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
-        QMessageBox.critical(parent, "错误", "".join(currentpage) 
-                            + f"\n\t\t\t(页码{i + 1}/{total})")
+    try:
+        parent = widget
+        for i in range(total):
+            currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
+            parent.critical("错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
+    except NameError:
+        for i in range(total):
+            currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
+            QMessageBox.critical(parent, "错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
+    
 
-sys.excepthook      = exception_handler
-base_sys.excepthook = exception_handler
+sys.excepthook       = exception_handler
+base_sys.excepthook  = exception_handler
+threading.excepthook = exception_handler
 
 
 if sys.version_info < (3, 8):
@@ -142,9 +145,9 @@ def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
     elif mode == QtMsgType.QtFatalMsg:
         Base.log("F", msg, "PySide6")
         Base.log("F", "哇，pyside6爆掉了", "MainThread")
-        widget.critical("趋势", f"PySide6爆掉了！\n它的遗言：\n {msg}\n晚安，玛卡巴卡")
         widget.save_current_settings()
         widget.save_data()
+        widget.critical("趋势", f"PySide6爆掉了！\n它的遗言：\n {msg}\n晚安，玛卡巴卡")
         widget.closeEvent(QCloseEvent(), do_tip=False)
         widget.destroy()
         Base.log("F", "程序退出", "MainThread")
@@ -639,11 +642,18 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     def _question_if_exec(self, title, text, command, pixmap):
         Base.log("I", f"询问框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.question_if_exec")
-        msgbox = QMessageBox(QMessageBox.Icon.Question, title, text, 
-                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, parent=self)
-        msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-question.png"))
-        if msgbox.exec() == QMessageBox.StandardButton.Yes:
+        if question_yes_no(
+            self, 
+            title, 
+            text, 
+            False, 
+            "question", 
+            pixmap or QPixmap("./img/logo/favicon-help.png")):
             command()
+            return True
+        return False
+
+
         
 
     class TipHandler(QThread):
@@ -1264,8 +1274,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         """保存当前设置到文件（settings）"""
         # settings.set(**{target: getattr(self, target, settings.get()) for target in settings.get_dict()})
         Base.log("I", "保存设置到文件", "MainWindow.save_settings")
-        os.makedirs(os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}", exist_ok=True)            
-        settings.save_to(os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/settings.dat")
+        os.makedirs(os.getcwd() + os.sep + f"chunks/{self.current_user}", exist_ok=True)            
+        settings.save_to(os.getcwd() + os.sep + f"chunks/{self.current_user}/settings.dat")
         
 
     @Slot()
@@ -1961,7 +1971,7 @@ class UpdateThread(QThread):
                         int(value * self.mainwindow.score_down_flash_framelength_step
                         + self.mainwindow.score_down_flash_framelength_base))))
                     if self.lastest_score[stu.num] - stu.score >= 1145 and not self.first_start:
-                        play_sound("res/sounds/boom.mp3", volume=0.2)
+                        play_sound("audio/sounds/boom.mp3", volume=0.2)
 
                         Base.log("I", f"不是哥们，真有人能扣{self.lastest_score[stu.num] - stu.score:.1f}分？犯天条了？", "UpdateThread.run")
                     self.lastest_score[stu.num] = stu.score
@@ -2009,7 +2019,7 @@ class UpdateThread(QThread):
         def detect_update(self):
             "检测是否有更新过"
             if self.mainwindow.client_version_code < CLIENT_VERSION_CODE:
-                play_sound("res/sounds/orb.ogg")
+                play_sound("audio/sounds/orb.ogg")
                 self.mainwindow.show_update_log()
                 self.mainwindow.client_version_code = CLIENT_VERSION_CODE
                 self.mainwindow.client_version = CLIENT_VERSION
@@ -2079,7 +2089,7 @@ class UpdateThread(QThread):
             ):
                 
                 # 没好的一天又开始力
-                self.mainwindow.show_tip(f"{time.strftime('%Y年%m月%d日过去了，', time.localtime(self.mainwindow.last_start_time))}新的一天开始了！", self.mainwindow, 6000, sound="res/sounds/orb.ogg")
+                self.mainwindow.show_tip(f"{time.strftime('%Y年%m月%d日过去了，', time.localtime(self.mainwindow.last_start_time))}新的一天开始了！", self.mainwindow, 6000, sound="audio/sounds/orb.ogg")
                 self.mainwindow.day_end(
                     time.localtime(self.mainwindow.last_start_time).tm_wday,
                     self.mainwindow.last_start_time,
@@ -3374,15 +3384,15 @@ class SettingWidget(SettingWindow.Ui_Form, MyWidget):
         if num == 8:
             return (1, "1倍")
         if num == 9:
-            return (1.2, "1.2倍")
+            return (1.1, "1.1倍")
         if num == 10:
-            return (1.5, "1.5倍")
+            return (1.2, "1.2倍")
         if num == 11:
-            return (1.8, "1.8倍")
+            return (1.5, "1.5倍")
         if num == 12:
-            return (2, "2倍")
+            return (1.8, "1.8倍")
         if num == 13:
-            return (3, "3倍")
+            return (2, "2倍")
         if num == 14:
             return (3, "3倍")
         if num == 15:
@@ -3413,16 +3423,18 @@ class SettingWidget(SettingWindow.Ui_Form, MyWidget):
             return 7
         if 0.95 <= animationspeed <= 1.05:
             return 8
-        if 1.15 <=  animationspeed <= 1.25:
+        if 1.09 <= animationspeed <= 1.11:
             return 9
-        if 1.45 <= animationspeed <= 1.55:
+        if 1.15 <=  animationspeed <= 1.25:
             return 10
-        if 1.75 <= animationspeed <= 1.85:
+        if 1.45 <= animationspeed <= 1.55:
             return 11
-        if animationspeed == 2:
+        if 1.75 <= animationspeed <= 1.85:
             return 12
-        if animationspeed == 3:
+        if animationspeed == 2:
             return 13
+        if animationspeed == 3:
+            return 14
         if animationspeed == 4:
             return 15
         if animationspeed == 6:
@@ -4145,8 +4157,8 @@ class NoiseDetectorWidget(NoiseDetector.Ui_Form, MyWidget):
         self.update_timer.start(40)
         self.read_data_thread = Thread(target=self.read_data)
         self.last_length = 0
-        self.pushButton.clicked.connect(lambda: play_sound("res/sounds/boom.mp3"))
-        self.pushButton_2.clicked.connect(lambda: play_sound("res/sounds/gl.mp3"))
+        self.pushButton.clicked.connect(lambda: play_sound("audio/sounds/boom.mp3"))
+        self.pushButton_2.clicked.connect(lambda: play_sound("audio/sounds/gl.mp3"))
         self.pushButton_3.clicked.connect(self.call_my_army)
         self.read_data_thread.start()
 

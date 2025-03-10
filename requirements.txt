@@ -26,9 +26,6 @@ psutil             >= 6.1.0
 PyAudio            >= 0.2.14
 # 用来播放和接收音频
 
-customtkinter      == 5.2.2
-# 我（JustNothing）同学用这个写的登陆界面（登陆界面可以自定义，所以可选）
-
 numpy              >= 1.24.4
 # 用来处理数据
 
@@ -43,3 +40,6 @@ opencv-python      >= 4.10.0.84
 
 colorama           >= 0.4.6
 # 用来给控制台上色
+
+customtkinter      == 5.2.2
+# 我（JustNothing）同学用这个写的登陆界面（登陆界面可以自定义，所以可选）
