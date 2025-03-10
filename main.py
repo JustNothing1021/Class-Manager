@@ -484,10 +484,9 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         "窗口是否在运行"
         self.framerate_update_time = time.time()
         self.updator_thread = UpdateThread(mainwindow=self)
-        self.updator_thread.valueChange.connect(self.progressBar.setValue)
         self.action.triggered.connect(self.student_rank)
         self.action_2.triggered.connect(self.manage_template)
-        self.action_3.triggered.connect(self.setting_widow)
+        self.action_3.triggered.connect(self.open_setting_window)
         self.action_5.triggered.connect(self.multi_select_and_send)
         self.action_7.triggered.connect(self.retract_last)
         self.action_8.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(1))
@@ -510,6 +509,9 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.action_26.triggered.connect(self.refresh_window)
         self.action_28.triggered.connect(self.show_debug_window)
         self.actionNew_Template.triggered.connect(self.new_template) # 笑死唯一一个不是默认名字的action控件
+        self.CardWidget.clicked.connect(self.show_attendance)
+        self.pushButton_3.clicked.connect(self.about)
+        self.pushButton_4.clicked.connect(self.open_setting_window)
         self.listWidget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.listWidget.doubleClicked.connect(self.click_opreation)
         self.tip_update.connect(lambda args: self._show_tip_int(*args))
@@ -517,7 +519,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.log_window_refresh.connect(self.refresh_logwindow)
         self.show_new_tip.connect(lambda tip: tip.show())
         self.pushButton.clicked.connect(self.dont_click)
-        self.tabWidget.setCurrentIndex(0)
         self.listView_data:List[Callable] = []
         "ListView数据，用于存储主窗口侧边ListView里面的命令（对应里面的每一项）"
         self.textBrowser.setReadOnly(True)
@@ -561,7 +562,13 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.setWindowTitle(f"班寄管理 - {self.target_class.name}")
         self.pushButton_2.clicked.connect(self.skip_all_tips)
         self.terminal_locals = {}
-        # self.show()
+        self.ListWidget.addItems([
+            "这里本来打算放点别的", 
+            "因为SideNotice会占地方",
+            "但是打算改用InfoBar",
+            "所以这里为了保证体验",
+            "先留着这玩意占位置吧",
+            "绝对不是因为懒才不改"])
 
     def __repr__(self):     # 其实是因为直接继承ClassObjects的repr会导致无限递归
         return super(MyMainWindow, self).__repr__()
@@ -1367,7 +1374,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
-    def setting_widow(self):
+    def open_setting_window(self):
         """设置窗口"""
         Base.log("I", "打开设置窗口", "MainWindow.setting_window")
         self.setting_window = SettingWidget(mainwindow=self, master_widget=self)
@@ -1664,6 +1671,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             QCoreApplication.processEvents()
         row = 0
         col = 0
+        max_col = (self.scrollArea.width() + 6) // (81 + 6)
+        height = (51 + 4) + 10
         self.scrollAreaWidgetContents_2.setGeometry(0, 0, 901, max((51 + 4) * len(self.target_class.students), 410))
         for num, stu in self.target_class.students.items():
             self.stu_buttons[num] = ObjectButton(f"{stu.num}号 {stu.name}\n{stu.score}分", self, object=stu)
@@ -1675,12 +1684,16 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             # self.stu_buttons[num].setToolTip(f"点击打开学生\"{stu.name}\"的信息")
             self.stu_buttons[num].show()
             col += 1
-            if col > 9:
+            if col > max_col - 1:
                 col = 0
                 row += 1
+                height += (51 + 4)
+        self.scrollAreaWidgetContents_2.setMinimumHeight(height) # 不然不显示滚动条
 
         row = 0
         col = 0
+        max_col = (self.scrollArea.width() + 6) // (162 + 6)
+        height = (102 + 4) + 10
         for num, grp in self.target_class.groups.items():
             if grp.belongs_to == self.target_class.key:
                 self.grp_buttons[num] = ObjectButton(f"{grp.name}\n{stu.score}分", self, object=stu)
@@ -1691,9 +1704,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                                                     grp=grp:self.group_info(grp)) 
                 self.grp_buttons[num].show()
                 col += 1
-                if col > 4:
+                if col > max_col - 1:
                     col = 0
                     row += 1
+                    height += (102 + 4)
+
+        self.scrollAreaWidgetContents.setMinimumHeight(height)
 
     def list_view(self, 
                   data:List[Tuple[str, Callable]], 
@@ -1792,18 +1808,31 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     def update_label(self):
         """更新标签"""
-        self.label_update.emit()
+        while 1:
+            self.label_update.emit()
+            time.sleep(0.1)
+
+
 
     def _update_label(self):
-        self.label_2.setText(QCoreApplication.translate("Form", F"班级名称：{self.target_class.name}"))
-        self.label_3.setText(QCoreApplication.translate("Form", F"班级人数：{len(self.target_class.students)}", None))
-        self.label_4.setText(QCoreApplication.translate("Form", F"班主任：  {self.target_class.owner}", None))
-        self.label_5.setText(QCoreApplication.translate("Form", F"班级总分：{round(sum([float(self.target_class.students[num].score) for num in self.target_class.students]), 1)}", None))
-        self.label_7.setText(QCoreApplication.translate("Form", f"更新率: {self.framerate}（窗口），{self.video_framerate}（背景）", None))
-        self.label_8.setText(QCoreApplication.translate("Form", f"当前运行时间: {time.time() - self.create_time:.1f} 秒", None))
-        self.label_9.setText(QCoreApplication.translate("Form", f"当前并行线程数: {threading.active_count()}", None))
-        self.label_10.setText(QCoreApplication.translate("Form", f"当前内存占用量: {psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024:.1f} MB", None))
-        self.label_11.setText(QCoreApplication.translate("Form", f"当前内部更新率: {self.class_observer_update_rate}/{self.class_obs.tps}（班级），{self.achievement_observer_update_rate}/{self.achievement_obs.tps}（成就）", None))
+        self.label_2.setText(QCoreApplication.translate("Form", F"{self.target_class.name}"))
+        self.label_3.setText(QCoreApplication.translate("Form", F"{len(self.target_class.students)}", None))
+        self.label_4.setText(QCoreApplication.translate("Form", F"{self.target_class.owner}", None))
+        self.label_5.setText(QCoreApplication.translate("Form", F"{round(sum([float(self.target_class.students[num].score) for num in self.target_class.students]), 1)}", None))
+        self.label_6.setText(QCoreApplication.translate("Form", F"{max(*[float(self.target_class.students[num].score) for num in self.target_class.students])}/{min(*[float(self.target_class.students[num].score) for num in self.target_class.students])}", None))
+        self.label_7.setText(QCoreApplication.translate("Form", f"{self.framerate}fps; {self.video_framerate}fps", None))
+        self.label_8.setText(QCoreApplication.translate("Form", f"{time.time() - self.create_time:.1f} s", None))
+        self.label_9.setText(QCoreApplication.translate("Form", f"{threading.active_count()}", None))
+        self.label_10.setText(QCoreApplication.translate("Form",f"{psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024:.1f} MB", None))
+        self.label_11.setText(QCoreApplication.translate("Form",f"{self.class_observer_update_rate}/{self.class_obs.tps}tps; {self.achievement_observer_update_rate}/{self.achievement_obs.tps}tps", None))
+        self.BodyLabel_2.setText(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        self.BodyLabel.setText("%s好，欢迎回来" % (
+            "早上" if 5 <= time.localtime().tm_hour < 10 else
+            "上午" if 10 <= time.localtime().tm_hour < 12 else
+            "中午" if 12 <= time.localtime().tm_hour < 14 else
+            "下午" if 14 <= time.localtime().tm_hour < 18 else
+            "晚上"))
+
 
     def config_data(self,
                     path:   str  = os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas",
@@ -1833,7 +1862,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         # window = ProgressAnimationTest()
         # window.show()
         self.updator_thread.start()
-        Thread(name="MainClassWindowLabelUpdateThread", target=self.update_label, daemon=True).start()
+        Thread(name="MainWindowUpdator", target=self.update_label, daemon=True).start()
         self.is_running = True
         self.insert_action("双击这种列表项目可查看信息", lambda: QMessageBox.information(self, "。", "孩子真棒"))
         Base.log("I", "线程启动完成，exec()", "MainWindow.mainloop")
@@ -1855,7 +1884,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 class UpdateThread(QThread):
         """更新线程，更新主界面的按钮什么之类的东西"""
         first_start = True
-        valueChange = Signal(int)
         "这东西没用，只是对应的主界面那个不停鬼畜的进度条，为了证明窗口还在更新"
 
         def __init__(self, parent:Union[MainWindow, MyWidget]=None, 
@@ -1868,7 +1896,6 @@ class UpdateThread(QThread):
             self.mutex = QMutex()  # 互斥锁，用于线程同步
             self.cond = QWaitCondition()  # 等待条件，用于线程暂停和恢复
             self.mainwindow = mainwindow
-            self.valueChange.connect(self.mainwindow.progressBar.setValue)
             self.running = True
             self.stopped = False
             self.last_day_time = 0
@@ -1924,12 +1951,7 @@ class UpdateThread(QThread):
                 self.mainwindow.pushButton_2.move(QPoint(970, -24))
                 self.button_shown = False
 
-        def refresh_progressbar(self):
-            "更新主界面那个毛用没有的进度条"
-            if self.progress_value >= 100:
-                self.progress_value = 0
-            self.progress_value += 1        # 这进度条就是为了看窗口是不是卡住了
-            self.valueChange.emit(self.progress_value)
+
 
         def update_stu_btns(self):
             "更新主窗口的学生按钮"
@@ -2122,7 +2144,6 @@ class UpdateThread(QThread):
                             Thread(target=lambda: (time.sleep(8), self.detect_new_version())).start()
                             Thread(target=lambda: (time.sleep(5), self.detect_update())).start()
                             self.first_start = False
-                        self.refresh_progressbar()
                         time.sleep(0.5)
 
                         
@@ -3525,65 +3546,6 @@ class SettingWidget(SettingWindow.Ui_Form, MyWidget):
         Base.log("I", "取消保存", "SettingWidget.cancel_save")
         self.closeEvent(QCloseEvent(), tip=False)
 
-
-class StudentViewWidget(StudentView.Ui_Form, MyWidget):
-    def __init__(self, 
-                 master_widget:Union[MainWindow, MyWidget]=None, 
-                 mainwindow:MainWindow=None,
-                 title:str="学生信息",
-                 data:List[Tuple[Student, Callable]]=None):
-        """初始化
-
-        :param master_widget: 这个窗口的父窗口
-        :param mainwindow: 程序的主窗口，方便传参"""
-        super().__init__(master=master_widget)
-        self.mainwindow = mainwindow
-        self.master_widget = master_widget
-        self.setupUi(self)
-        self.show()
-        self.grid_buttons()
-        self.setWindowTitle(title)
-        self.data = data
-        self.title = title
-        self.buttons:Dict[int, ObjectButton] = {}
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_buttons)
-        self.update_timer.start(100)
-
-    def set_data(self, data:List[Tuple[Student, Callable]]):
-        self.data = data
-        self.grid_buttons()
-
-    
-    def grid_buttons(self):
-        """显示按钮（虽然不算真正意义上的grid）"""
-        for b in self.buttons.values():
-            b.destroy()
-            QCoreApplication.processEvents()
-        row = 0
-        col = 0
-        for num, stu, _callable in [(s.num, s, c) for s, c in self.data]:
-            num:int
-            stu:Student
-            _callable:Callable
-            self.buttons[num] = ObjectButton(f"{stu.num}号 {stu.name}\n{stu.score}分", self, object=stu)
-            self.buttons[num].setObjectName(u"StudentButton"+str(stu.num))
-            self.buttons[num] = ObjectButton(f"{stu.num}号 {stu.name}\n{stu.score}分", self, object=stu)
-            self.buttons[num].setObjectName(u"StudentButton"+str(stu.num))
-            self.buttons[num].setGeometry(QRect(10 + col * (81 + 6), 8 + row * (51 + 4), 81, 51))
-            self.buttons[num].clicked.connect(lambda *,             # 第一个参数要空出来并且默认为None
-                                                  _callable=_callable:_callable())      # 意义不明哈
-            self.buttons[num].object = stu
-            self.buttons[num].show()
-            col += 1
-            if col > 9:
-                col = 0
-                row += 1
-
-    def update_buttons(self):
-        for num, b in self.buttons.items():
-            stu:Student = b.object
-            b.setText(f"{stu.num}号 {stu.name}\n{stu.score}分")
 
 
 class WTFWidget(WTF.Ui_Form, MyWidget):

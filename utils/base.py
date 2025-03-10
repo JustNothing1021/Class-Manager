@@ -801,9 +801,10 @@ class Base(Object):
                         lineno = 0
                     if file.startswith(("/", "\\")):
                         file = file[1:]
-                    cm = f"{Color.BLUE}{Base.gettime()}{Color.END} {color}{type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
-                    lm = f"{Base.gettime()} {type} {(source).ljust(35)} {m}" 
-                    lfm = f"{Base.gettime()} {type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
+                    t = Base.gettime()
+                    cm = f"{Color.BLUE}{t}{Color.END} {color}{type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
+                    lm = f"{t.split('.')[0].split(' ')[1]} {type} {m}" 
+                    lfm = f"{t} {type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
                     Base.window_log_queue.put(lm)
                     Base.console_log_queue.put(cm)
                     # Base.logfile_log_queue.put(lfm)

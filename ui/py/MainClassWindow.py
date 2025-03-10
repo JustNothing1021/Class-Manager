@@ -17,15 +17,19 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QListWidget, QListWidgetItem,
-    QMainWindow, QMenu, QMenuBar, QProgressBar,
-    QPushButton, QScrollArea, QSizePolicy, QStatusBar,
-    QTabWidget, QTextBrowser, QWidget)
+    QMainWindow, QMenu, QMenuBar, QPushButton,
+    QScrollArea, QSizePolicy, QStatusBar, QTabWidget,
+    QTextBrowser, QWidget)
+
+from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, HyperlinkLabel,
+    ListWidget, PushButton, SimpleCardWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1306, 612)
+        MainWindow.setEnabled(True)
+        MainWindow.resize(1114, 592)
         self.actionNew_Template = QAction(MainWindow)
         self.actionNew_Template.setObjectName(u"actionNew_Template")
         self.action_2 = QAction(MainWindow)
@@ -86,10 +90,13 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget_2 = QTabWidget(self.centralwidget)
         self.tabWidget_2.setObjectName(u"tabWidget_2")
-        self.tabWidget_2.setGeometry(QRect(0, 0, 941, 341))
+        self.tabWidget_2.setGeometry(QRect(270, 0, 671, 411))
         self.tabWidget_2.setStyleSheet(u"QTabWidget::pane {\n"
 "    background: transparent;\n"
 "    border:1;\n"
+"}\n"
+"QTabWidget {\n"
+"	border-radius: 5px;\n"
 "}\n"
 "\n"
 "")
@@ -97,91 +104,311 @@ class Ui_MainWindow(object):
         self.tab_3.setObjectName(u"tab_3")
         self.scrollArea = QScrollArea(self.tab_3)
         self.scrollArea.setObjectName(u"scrollArea")
-        self.scrollArea.setGeometry(QRect(0, 0, 901, 321))
+        self.scrollArea.setGeometry(QRect(0, 0, 661, 391))
         self.scrollArea.setStyleSheet(u"background: transparent;border:1;")
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 901, 321))
-        self.scrollAreaWidgetContents_2.setMinimumSize(QSize(0, 0))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 661, 391))
         self.scrollArea.setWidget(self.scrollAreaWidgetContents_2)
         self.tabWidget_2.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
         self.tab_4.setObjectName(u"tab_4")
+        self.scrollArea_2 = QScrollArea(self.tab_4)
+        self.scrollArea_2.setObjectName(u"scrollArea_2")
+        self.scrollArea_2.setGeometry(QRect(0, 0, 651, 391))
+        self.scrollArea_2.setStyleSheet(u"background: transparent;border:1;")
+        self.scrollArea_2.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 651, 391))
+        self.scrollArea_2.setWidget(self.scrollAreaWidgetContents)
         self.tabWidget_2.addTab(self.tab_4, "")
         self.textBrowser = QTextBrowser(self.centralwidget)
         self.textBrowser.setObjectName(u"textBrowser")
-        self.textBrowser.setGeometry(QRect(0, 360, 951, 201))
+        self.textBrowser.setGeometry(QRect(670, 420, 441, 131))
         self.textBrowser.setStyleSheet(u"background-color: rgba(255, 255, 255, 127);\n"
 "border-color: rgb(12, 12, 12);")
         self.listWidget = QListWidget(self.centralwidget)
         self.listWidget.setObjectName(u"listWidget")
-        self.listWidget.setGeometry(QRect(980, 180, 321, 221))
+        self.listWidget.setGeometry(QRect(0, 0, 271, 211))
         self.listWidget.setStyleSheet(u"background-color: rgba(255, 255, 255, 127);")
-        self.label = QLabel(self.centralwidget)
-        self.label.setObjectName(u"label")
-        self.label.setGeometry(QRect(980, 160, 171, 21))
-        self.progressBar = QProgressBar(self.centralwidget)
-        self.progressBar.setObjectName(u"progressBar")
-        self.progressBar.setGeometry(QRect(1070, 150, 231, 23))
-        self.progressBar.setValue(24)
-        self.tabWidget = QTabWidget(self.centralwidget)
-        self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setGeometry(QRect(990, 410, 291, 151))
-        self.tabWidget.setStyleSheet(u"background-color: rgba(255, 255, 255, 127);")
-        self.tab_5 = QWidget()
-        self.tab_5.setObjectName(u"tab_5")
-        self.label_2 = QLabel(self.tab_5)
-        self.label_2.setObjectName(u"label_2")
-        self.label_2.setGeometry(QRect(10, 20, 191, 16))
-        self.label_3 = QLabel(self.tab_5)
-        self.label_3.setObjectName(u"label_3")
-        self.label_3.setGeometry(QRect(10, 40, 191, 16))
-        self.label_4 = QLabel(self.tab_5)
-        self.label_4.setObjectName(u"label_4")
-        self.label_4.setGeometry(QRect(10, 60, 181, 16))
-        self.label_5 = QLabel(self.tab_5)
-        self.label_5.setObjectName(u"label_5")
-        self.label_5.setGeometry(QRect(10, 80, 191, 16))
-        self.tabWidget.addTab(self.tab_5, "")
-        self.tab = QWidget()
-        self.tab.setObjectName(u"tab")
-        self.label_7 = QLabel(self.tab)
-        self.label_7.setObjectName(u"label_7")
-        self.label_7.setGeometry(QRect(10, 10, 191, 21))
-        self.label_8 = QLabel(self.tab)
-        self.label_8.setObjectName(u"label_8")
-        self.label_8.setGeometry(QRect(10, 30, 191, 21))
-        self.label_9 = QLabel(self.tab)
-        self.label_9.setObjectName(u"label_9")
-        self.label_9.setGeometry(QRect(10, 50, 191, 21))
-        self.label_10 = QLabel(self.tab)
-        self.label_10.setObjectName(u"label_10")
-        self.label_10.setGeometry(QRect(10, 70, 191, 21))
-        self.label_11 = QLabel(self.tab)
-        self.label_11.setObjectName(u"label_11")
-        self.label_11.setGeometry(QRect(10, 90, 261, 21))
-        self.tabWidget.addTab(self.tab, "")
-        self.tab_2 = QWidget()
-        self.tab_2.setObjectName(u"tab_2")
-        self.pushButton = QPushButton(self.tab_2)
-        self.pushButton.setObjectName(u"pushButton")
-        self.pushButton.setGeometry(QRect(100, 50, 75, 24))
-        self.tabWidget.addTab(self.tab_2, "")
         self.pushButton_2 = QPushButton(self.centralwidget)
         self.pushButton_2.setObjectName(u"pushButton_2")
         self.pushButton_2.setGeometry(QRect(970, -24, 75, 24))
+        self.CardWidget = CardWidget(self.centralwidget)
+        self.CardWidget.setObjectName(u"CardWidget")
+        self.CardWidget.setGeometry(QRect(0, 210, 271, 41))
+        self.BodyLabel = BodyLabel(self.CardWidget)
+        self.BodyLabel.setObjectName(u"BodyLabel")
+        self.BodyLabel.setGeometry(QRect(150, 10, 141, 20))
+        self.BodyLabel_2 = BodyLabel(self.CardWidget)
+        self.BodyLabel_2.setObjectName(u"BodyLabel_2")
+        self.BodyLabel_2.setGeometry(QRect(10, 10, 131, 19))
+        self.SimpleCardWidget_2 = SimpleCardWidget(self.centralwidget)
+        self.SimpleCardWidget_2.setObjectName(u"SimpleCardWidget_2")
+        self.SimpleCardWidget_2.setGeometry(QRect(0, 250, 271, 161))
+        self.CaptionLabel = CaptionLabel(self.SimpleCardWidget_2)
+        self.CaptionLabel.setObjectName(u"CaptionLabel")
+        self.CaptionLabel.setGeometry(QRect(10, 10, 70, 16))
+        self.HyperlinkLabel = HyperlinkLabel(self.SimpleCardWidget_2)
+        self.HyperlinkLabel.setObjectName(u"HyperlinkLabel")
+        self.HyperlinkLabel.setGeometry(QRect(230, 10, 31, 16))
+        font = QFont()
+        font.setFamilies([u"Segoe UI"])
+        font.setPointSize(8)
+        font.setBold(False)
+        font.setUnderline(False)
+        font.setStrikeOut(False)
+        self.HyperlinkLabel.setFont(font)
+        self.PushButton = PushButton(self.SimpleCardWidget_2)
+        self.PushButton.setObjectName(u"PushButton")
+        self.PushButton.setGeometry(QRect(10, 40, 61, 31))
+        font1 = QFont()
+        font1.setFamilies([u"Segoe UI"])
+        font1.setPointSize(9)
+        font1.setBold(False)
+        self.PushButton.setFont(font1)
+        self.PushButton_2 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_2.setObjectName(u"PushButton_2")
+        self.PushButton_2.setGeometry(QRect(100, 40, 61, 31))
+        font2 = QFont()
+        font2.setFamilies([u"Microsoft YaHei UI"])
+        font2.setPointSize(9)
+        font2.setBold(False)
+        self.PushButton_2.setFont(font2)
+        self.PushButton_3 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_3.setObjectName(u"PushButton_3")
+        self.PushButton_3.setGeometry(QRect(190, 40, 61, 31))
+        self.PushButton_3.setFont(font2)
+        self.PushButton_4 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_4.setObjectName(u"PushButton_4")
+        self.PushButton_4.setGeometry(QRect(10, 80, 61, 31))
+        self.PushButton_4.setFont(font2)
+        self.PushButton_5 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_5.setObjectName(u"PushButton_5")
+        self.PushButton_5.setGeometry(QRect(100, 80, 61, 31))
+        self.PushButton_5.setFont(font2)
+        self.PushButton_6 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_6.setObjectName(u"PushButton_6")
+        self.PushButton_6.setGeometry(QRect(190, 80, 61, 31))
+        self.PushButton_6.setFont(font2)
+        self.PushButton_7 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_7.setObjectName(u"PushButton_7")
+        self.PushButton_7.setGeometry(QRect(190, 120, 61, 31))
+        self.PushButton_7.setFont(font2)
+        self.PushButton_8 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_8.setObjectName(u"PushButton_8")
+        self.PushButton_8.setGeometry(QRect(100, 120, 61, 31))
+        self.PushButton_8.setFont(font2)
+        self.PushButton_9 = PushButton(self.SimpleCardWidget_2)
+        self.PushButton_9.setObjectName(u"PushButton_9")
+        self.PushButton_9.setGeometry(QRect(10, 120, 61, 31))
+        self.PushButton_9.setFont(font2)
+        self.SimpleCardWidget = SimpleCardWidget(self.centralwidget)
+        self.SimpleCardWidget.setObjectName(u"SimpleCardWidget")
+        self.SimpleCardWidget.setGeometry(QRect(0, 410, 271, 81))
+        self.CaptionLabel_2 = CaptionLabel(self.SimpleCardWidget)
+        self.CaptionLabel_2.setObjectName(u"CaptionLabel_2")
+        self.CaptionLabel_2.setGeometry(QRect(10, 10, 70, 16))
+        self.PushButton_10 = PushButton(self.SimpleCardWidget)
+        self.PushButton_10.setObjectName(u"PushButton_10")
+        self.PushButton_10.setGeometry(QRect(10, 30, 61, 31))
+        self.PushButton_10.setFont(font2)
+        self.PushButton_11 = PushButton(self.SimpleCardWidget)
+        self.PushButton_11.setObjectName(u"PushButton_11")
+        self.PushButton_11.setGeometry(QRect(100, 30, 61, 31))
+        self.PushButton_11.setFont(font2)
+        self.PushButton_12 = PushButton(self.SimpleCardWidget)
+        self.PushButton_12.setObjectName(u"PushButton_12")
+        self.PushButton_12.setGeometry(QRect(190, 30, 61, 31))
+        self.PushButton_12.setFont(font2)
+        self.SimpleCardWidget_3 = SimpleCardWidget(self.centralwidget)
+        self.SimpleCardWidget_3.setObjectName(u"SimpleCardWidget_3")
+        self.SimpleCardWidget_3.setGeometry(QRect(0, 490, 271, 61))
+        self.pushButton = PushButton(self.SimpleCardWidget_3)
+        self.pushButton.setObjectName(u"pushButton")
+        self.pushButton.setGeometry(QRect(180, 10, 81, 31))
+        self.pushButton.setFont(font2)
+        self.pushButton_3 = PushButton(self.SimpleCardWidget_3)
+        self.pushButton_3.setObjectName(u"pushButton_3")
+        self.pushButton_3.setGeometry(QRect(10, 10, 71, 31))
+        self.pushButton_3.setFont(font2)
+        self.pushButton_4 = PushButton(self.SimpleCardWidget_3)
+        self.pushButton_4.setObjectName(u"pushButton_4")
+        self.pushButton_4.setGeometry(QRect(90, 10, 71, 31))
+        self.pushButton_4.setFont(font2)
+        self.SimpleCardWidget_4 = SimpleCardWidget(self.centralwidget)
+        self.SimpleCardWidget_4.setObjectName(u"SimpleCardWidget_4")
+        self.SimpleCardWidget_4.setGeometry(QRect(270, 420, 211, 131))
+        self.label_2 = QLabel(self.SimpleCardWidget_4)
+        self.label_2.setObjectName(u"label_2")
+        self.label_2.setGeometry(QRect(50, 30, 191, 16))
+        self.label_3 = QLabel(self.SimpleCardWidget_4)
+        self.label_3.setObjectName(u"label_3")
+        self.label_3.setGeometry(QRect(50, 50, 191, 16))
+        self.label_4 = QLabel(self.SimpleCardWidget_4)
+        self.label_4.setObjectName(u"label_4")
+        self.label_4.setGeometry(QRect(50, 70, 181, 16))
+        self.label_5 = QLabel(self.SimpleCardWidget_4)
+        self.label_5.setObjectName(u"label_5")
+        self.label_5.setGeometry(QRect(50, 90, 191, 16))
+        self.BodyLabel_3 = BodyLabel(self.SimpleCardWidget_4)
+        self.BodyLabel_3.setObjectName(u"BodyLabel_3")
+        self.BodyLabel_3.setGeometry(QRect(10, 10, 65, 19))
+        self.label_6 = QLabel(self.SimpleCardWidget_4)
+        self.label_6.setObjectName(u"label_6")
+        self.label_6.setGeometry(QRect(50, 110, 191, 16))
+        self.label_12 = QLabel(self.SimpleCardWidget_4)
+        self.label_12.setObjectName(u"label_12")
+        self.label_12.setGeometry(QRect(20, 30, 31, 16))
+        self.label_13 = QLabel(self.SimpleCardWidget_4)
+        self.label_13.setObjectName(u"label_13")
+        self.label_13.setGeometry(QRect(20, 50, 31, 16))
+        self.label_14 = QLabel(self.SimpleCardWidget_4)
+        self.label_14.setObjectName(u"label_14")
+        self.label_14.setGeometry(QRect(20, 70, 31, 16))
+        self.label_15 = QLabel(self.SimpleCardWidget_4)
+        self.label_15.setObjectName(u"label_15")
+        self.label_15.setGeometry(QRect(20, 90, 31, 16))
+        self.label_16 = QLabel(self.SimpleCardWidget_4)
+        self.label_16.setObjectName(u"label_16")
+        self.label_16.setGeometry(QRect(10, 110, 41, 16))
+        self.SimpleCardWidget_5 = SimpleCardWidget(self.centralwidget)
+        self.SimpleCardWidget_5.setObjectName(u"SimpleCardWidget_5")
+        self.SimpleCardWidget_5.setGeometry(QRect(480, 420, 191, 131))
+        self.BodyLabel_4 = BodyLabel(self.SimpleCardWidget_5)
+        self.BodyLabel_4.setObjectName(u"BodyLabel_4")
+        self.BodyLabel_4.setGeometry(QRect(10, 10, 65, 19))
+        self.label_7 = QLabel(self.SimpleCardWidget_5)
+        self.label_7.setObjectName(u"label_7")
+        self.label_7.setGeometry(QRect(50, 30, 161, 21))
+        self.label_8 = QLabel(self.SimpleCardWidget_5)
+        self.label_8.setObjectName(u"label_8")
+        self.label_8.setGeometry(QRect(50, 50, 161, 21))
+        self.label_9 = QLabel(self.SimpleCardWidget_5)
+        self.label_9.setObjectName(u"label_9")
+        self.label_9.setGeometry(QRect(50, 70, 161, 21))
+        self.label_10 = QLabel(self.SimpleCardWidget_5)
+        self.label_10.setObjectName(u"label_10")
+        self.label_10.setGeometry(QRect(50, 90, 161, 21))
+        self.label_11 = QLabel(self.SimpleCardWidget_5)
+        self.label_11.setObjectName(u"label_11")
+        self.label_11.setGeometry(QRect(50, 110, 231, 21))
+        self.label_17 = QLabel(self.SimpleCardWidget_5)
+        self.label_17.setObjectName(u"label_17")
+        self.label_17.setGeometry(QRect(20, 30, 31, 21))
+        self.label_18 = QLabel(self.SimpleCardWidget_5)
+        self.label_18.setObjectName(u"label_18")
+        self.label_18.setGeometry(QRect(20, 50, 31, 21))
+        self.label_19 = QLabel(self.SimpleCardWidget_5)
+        self.label_19.setObjectName(u"label_19")
+        self.label_19.setGeometry(QRect(20, 70, 31, 21))
+        self.label_20 = QLabel(self.SimpleCardWidget_5)
+        self.label_20.setObjectName(u"label_20")
+        self.label_20.setGeometry(QRect(20, 90, 31, 21))
+        self.label_21 = QLabel(self.SimpleCardWidget_5)
+        self.label_21.setObjectName(u"label_21")
+        self.label_21.setGeometry(QRect(10, 110, 41, 21))
+        self.ListWidget = ListWidget(self.centralwidget)
+        self.ListWidget.setObjectName(u"ListWidget")
+        self.ListWidget.setGeometry(QRect(940, 20, 171, 401))
+        self.ListWidget.setStyleSheet(u"ListView,\n"
+"ListWidget {\n"
+"    background: transparent;\n"
+"    outline: none;\n"
+"    border: none;\n"
+"    /* font: 13px 'Segoe UI', 'Microsoft YaHei'; */\n"
+"    background-color: rgba(255, 255, 255, 127);\n"
+"    padding-left: 4px;\n"
+"    padding-right: 4px;\n"
+"}\n"
+"\n"
+"ListView::item,\n"
+"ListWidget::item {\n"
+"    background: transparent;\n"
+"    border: 0px;\n"
+"    padding-left: 11px;\n"
+"    padding-right: 11px;\n"
+"    height: 35px;\n"
+"}\n"
+"\n"
+"\n"
+"ListView::indicator,\n"
+"ListWidget::indicator {\n"
+"    width: 18px;\n"
+"    height: 18px;\n"
+"    border-radius: 5px;\n"
+"    border: 1px solid rgba(0, 0, 0, 0.48);\n"
+"    background-color: rgba(0, 0, 0, 0.022);\n"
+"    margin-right: 4px;\n"
+"}\n"
+"\n"
+"ListView::indicator:hover,\n"
+"ListWidget::indicator:hover {\n"
+"    border: 1px solid rgba(0, 0, 0, 0.56);\n"
+"    background-color: rgba(0, 0, 0, 0.05);\n"
+"}\n"
+"\n"
+"ListView::indicator:pressed,\n"
+"ListWidget::indicator:pressed {\n"
+"    border: 1px solid rgba(0, 0, 0, 0.27);\n"
+"    bac"
+                        "kground-color: rgba(0, 0, 0, 0.12);\n"
+"}\n"
+"\n"
+"ListView::indicator:checke,\n"
+"ListWidget::indicator:checked,\n"
+"ListView::indicator:indeterminate,\n"
+"ListWidget::indicator:indeterminate {\n"
+"    border: 1px solid #009faa;\n"
+"    background-color: #009faa;\n"
+"}\n"
+"\n"
+"ListView::indicator:checked,\n"
+"ListWidget::indicator:checked {\n"
+"    image: url(:/qfluentwidgets/images/check_box/Accept_white.svg);\n"
+"}\n"
+"\n"
+"ListView::indicator:indeterminate,\n"
+"ListWidget::indicator:indeterminate {\n"
+"    image: url(:/qfluentwidgets/images/check_box/PartialAccept_white.svg);\n"
+"}\n"
+"\n"
+"ListView::indicator:checked:hove,\n"
+"ListWidget::indicator:checked:hover,\n"
+"ListView::indicator:indeterminate:hover,\n"
+"ListWidget::indicator:indeterminate:hover {\n"
+"    border: 1px solid #00a7b3;\n"
+"    background-color: #00a7b3;\n"
+"}\n"
+"\n"
+"ListView::indicator:checked:presse,\n"
+"ListWidget::indicator:checked:pressed,\n"
+"ListView::indicator:indeterminate:pressed,\n"
+"ListWidget::indicator:indeterminate:pre"
+                        "ssed {\n"
+"    border: 1px solid #3eabb3;\n"
+"    background-color: #3eabb3;\n"
+"}\n"
+"\n"
+"ListView::indicator:disabled,\n"
+"ListWidget::indicator:disabled {\n"
+"    border: 1px solid rgba(0, 0, 0, 0.27);\n"
+"    background-color: transparent;\n"
+"}\n"
+"\n"
+"ListView::indicator:checked:disable,\n"
+"ListWidget::indicator:checked:disabled,\n"
+"ListView::indicator:indeterminate:disabled,\n"
+"ListWidget::indicator:indeterminate:disabled {\n"
+"    border: 1px solid rgb(199, 199, 199);\n"
+"    background-color: rgb(199, 199, 199);\n"
+"}")
         MainWindow.setCentralWidget(self.centralwidget)
-        self.label.raise_()
-        self.tabWidget_2.raise_()
-        self.textBrowser.raise_()
-        self.listWidget.raise_()
-        self.progressBar.raise_()
-        self.tabWidget.raise_()
-        self.pushButton_2.raise_()
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1306, 22))
+        self.menubar.setGeometry(QRect(0, 0, 1114, 22))
         self.menu = QMenu(self.menubar)
         self.menu.setObjectName(u"menu")
         self.menu_2 = QMenu(self.menubar)
@@ -236,7 +463,6 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
 
         self.tabWidget_2.setCurrentIndex(0)
-        self.tabWidget.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -343,21 +569,49 @@ class Ui_MainWindow(object):
         self.action_28.setText(QCoreApplication.translate("MainWindow", u"\u8c03\u8bd5\u9879\u76ee", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"\u672c\u73ed\u5b66\u751f", None))
         self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"\u672c\u73ed\u5c0f\u7ec4", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"\u7cfb\u7edf\u4e8b\u4ef6", None))
+        self.pushButton_2.setText(QCoreApplication.translate("MainWindow", u"\u8df3\u8fc7\u6240\u6709", None))
+        self.BodyLabel.setText(QCoreApplication.translate("MainWindow", u"\u4e0a\u5348\u597d\uff0c\u6b22\u8fce\u56de\u6765", None))
+        self.BodyLabel_2.setText(QCoreApplication.translate("MainWindow", u"2025/11/4 11:45:14", None))
+        self.CaptionLabel.setText(QCoreApplication.translate("MainWindow", u"\u5feb\u901f\u7ba1\u7406", None))
+        self.HyperlinkLabel.setText(QCoreApplication.translate("MainWindow", u"\u7f16\u8f91", None))
+        self.PushButton.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_2.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_3.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_4.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_5.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_6.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_7.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_8.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_9.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.CaptionLabel_2.setText(QCoreApplication.translate("MainWindow", u"\u6700\u8fd1\u4f7f\u7528", None))
+        self.PushButton_10.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_11.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.PushButton_12.setText(QCoreApplication.translate("MainWindow", u"\u672a\u6307\u5b9a", None))
+        self.pushButton.setText(QCoreApplication.translate("MainWindow", u"\u795e\u79d8\u6309\u94ae", None))
+        self.pushButton_3.setText(QCoreApplication.translate("MainWindow", u"\u5173\u4e8e", None))
+        self.pushButton_4.setText(QCoreApplication.translate("MainWindow", u"\u8bbe\u7f6e", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_5), QCoreApplication.translate("MainWindow", u"\u73ed\u7ea7\u4fe1\u606f", None))
-        self.label_7.setText(QCoreApplication.translate("MainWindow", u"\u7a97\u53e3\u66f4\u65b0\u7387: 0/\u79d2", None))
-        self.label_8.setText(QCoreApplication.translate("MainWindow", u"\u5f53\u524d\u8fd0\u884c\u65f6\u95f4: ", None))
-        self.label_9.setText(QCoreApplication.translate("MainWindow", u"\u5f53\u524d\u5e76\u884c\u7ebf\u7a0b\u6570: 0", None))
-        self.label_10.setText(QCoreApplication.translate("MainWindow", u"\u5f53\u524d\u5185\u5b58\u5360\u7528\uff1a114MB", None))
-        self.label_11.setText(QCoreApplication.translate("MainWindow", u"\u5185\u90e8\u66f4\u65b0\u7387\uff1a114", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"\u7cfb\u7edf\u4fe1\u606f", None))
-        self.pushButton.setText(QCoreApplication.translate("MainWindow", u"\u5343\u4e07\u522b\u70b9", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"\u62bd\u8c61\u529f\u80fd", None))
-        self.pushButton_2.setText(QCoreApplication.translate("MainWindow", u"\u8df3\u8fc7\u6240\u6709", None))
+        self.BodyLabel_3.setText(QCoreApplication.translate("MainWindow", u"\u73ed\u7ea7\u4fe1\u606f", None))
+        self.label_6.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
+        self.label_12.setText(QCoreApplication.translate("MainWindow", u"\u540d\u79f0", None))
+        self.label_13.setText(QCoreApplication.translate("MainWindow", u"\u4eba\u6570", None))
+        self.label_14.setText(QCoreApplication.translate("MainWindow", u"\u6240\u5c5e", None))
+        self.label_15.setText(QCoreApplication.translate("MainWindow", u"\u5747\u5206", None))
+        self.label_16.setText(QCoreApplication.translate("MainWindow", u"\u9ad8\u4f4e\u5206", None))
+        self.BodyLabel_4.setText(QCoreApplication.translate("MainWindow", u"\u7cfb\u7edf\u4fe1\u606f", None))
+        self.label_7.setText(QCoreApplication.translate("MainWindow", u"0fps; 0fps", None))
+        self.label_8.setText(QCoreApplication.translate("MainWindow", u"0.0 s", None))
+        self.label_9.setText(QCoreApplication.translate("MainWindow", u"0", None))
+        self.label_10.setText(QCoreApplication.translate("MainWindow", u"114MB", None))
+        self.label_11.setText(QCoreApplication.translate("MainWindow", u"51tps; 4tps", None))
+        self.label_17.setText(QCoreApplication.translate("MainWindow", u"\u5e27\u7387", None))
+        self.label_18.setText(QCoreApplication.translate("MainWindow", u"\u65f6\u95f4", None))
+        self.label_19.setText(QCoreApplication.translate("MainWindow", u"\u7ebf\u7a0b", None))
+        self.label_20.setText(QCoreApplication.translate("MainWindow", u"\u5185\u5b58", None))
+        self.label_21.setText(QCoreApplication.translate("MainWindow", u"\u66f4\u65b0\u7387", None))
         self.menu.setTitle(QCoreApplication.translate("MainWindow", u"\u64cd\u4f5c", None))
         self.menu_2.setTitle(QCoreApplication.translate("MainWindow", u"\u89c6\u56fe", None))
         self.menu_3.setTitle(QCoreApplication.translate("MainWindow", u"\u5176\u4ed6", None))

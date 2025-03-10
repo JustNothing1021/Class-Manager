@@ -258,7 +258,7 @@ class ProgressAnimationTest(QMainWindow):
         text = item.text()
         QMessageBox.information(self, "选中项目", f"选中{text}，索引：{self.list_widget.row(item)}")
 
-
+# TODO: 把这个不明物体改成InfoBar
 class SideNotice(QWidget):
     "侧边栏通知"
     total = 0
