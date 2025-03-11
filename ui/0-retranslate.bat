@@ -12,8 +12,8 @@ for %%i in (*.ui) do (
 	set /a processing+=1
 	for /f "tokens=1 delims=." %%j in ("%%i") do set "fileName=%%j"
 	echo. | set /p dummy="translating - %%i"
-	echo. - finished ^(!processing!/!total!^)
 	pyside6-uic %%i > py/!fileName!.py
+	echo. - finished ^(!processing!/!total!^)
 )
 del py\*.ui 2> nul
 for /f %%i in ('powershell -Command "Get-Date -Uformat %%s"') do set "end=%%i"

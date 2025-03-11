@@ -28,6 +28,10 @@ from   types              import TracebackType, FrameType
 from   PySide6.QtCore     import *
 from   PySide6.QtGui      import *
 from   PySide6.QtWidgets  import *
+from   qfluentwidgets.common     import *
+from   qfluentwidgets.components import *
+from   qfluentwidgets.multimedia import *
+from   qfluentwidgets.window     import *
 from   src.base           import HighPrecision, HighPrecisionOperation
 from   utils.update_check import VERSION_INFO
 from   ui.py              import (MainClassWindow, WTF, StudentWindow, MultiSelectWindow,
@@ -484,34 +488,93 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         "窗口是否在运行"
         self.framerate_update_time = time.time()
         self.updator_thread = UpdateThread(mainwindow=self)
+        class Command:
+            def __init__(self, name: str, callable: str):
+                self.name = name
+                self.callable = callable
+            def __repr__(self):
+                return f"Command(name={repr(self.name)}, callable={repr(self.callable)})"
+            
+        self.command_list: List[Command] = []
         self.action.triggered.connect(self.student_rank)
+        self.command_list.append(Command("学生排名", self.student_rank))
         self.action_2.triggered.connect(self.manage_template)
+        self.command_list.append(Command("管理模板", self.manage_template))
         self.action_3.triggered.connect(self.open_setting_window)
+        self.command_list.append(Command("设置", self.open_setting_window))
         self.action_5.triggered.connect(self.multi_select_and_send)
+        self.command_list.append(Command("多选", self.multi_select_and_send))
         self.action_7.triggered.connect(self.retract_last)
+        self.command_list.append(Command("撤销", self.retract_last))
         self.action_8.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(1))
         self.action_9.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(0))
         self.action_10.triggered.connect(self.save)
+        self.command_list.append(Command("保存", self.save))
         self.action_12.triggered.connect(self.reset)
+        self.command_list.append(Command("重置", self.reset))
         self.action_13.triggered.connect(self.show_all_history)
+        self.command_list.append(Command("历史", self.show_all_history))
         self.action_14.triggered.connect(self.save_data_as)
+        self.command_list.append(Command("另存为", self.save_data_as))
         self.action_15.triggered.connect(self.music_selector)
+        self.command_list.append(Command("音乐", self.music_selector))
         self.action_16.triggered.connect(self.show_recovery_points)
+        self.command_list.append(Command("显示恢复点", self.show_recovery_points))
         self.action_17.triggered.connect(self.create_recovery_point)
+        self.command_list.append(Command("创建恢复点", self.create_recovery_point))
         self.action_18.triggered.connect(self.cleaing_sumup)
+        self.command_list.append(Command("卫生结算", self.cleaing_sumup))
         self.action_19.triggered.connect(self.show_attendance)
+        self.command_list.append(Command("考勤", self.show_attendance))
         self.action_20.triggered.connect(self.show_noise_detector)
+        self.command_list.append(Command("噪音", self.show_noise_detector))
         self.action_21.triggered.connect(self.random_select)
+        self.command_list.append(Command("随机选取", self.random_select))
         self.action_22.triggered.connect(self.homework_sumup)
+        self.command_list.append(Command("作业结算", self.homework_sumup))
         self.action_23.triggered.connect(self.about)
+        self.command_list.append(Command("关于", self.about))
         self.action_24.triggered.connect(self.show_update_log)
+        self.command_list.append(Command("更新日志", self.show_update_log))
         self.action_25.triggered.connect(lambda: Thread(target=self.updator_thread.detect_new_version).start())
+        self.command_list.append(Command("检查更新", lambda: Thread(target=self.updator_thread.detect_new_version).start()))
         self.action_26.triggered.connect(self.refresh_window)
+        self.command_list.append(Command("刷新", self.refresh_window))
         self.action_28.triggered.connect(self.show_debug_window)
+        self.command_list.append(Command("调试", self.show_debug_window))
         self.actionNew_Template.triggered.connect(self.new_template) # 笑死唯一一个不是默认名字的action控件
+        self.command_list.append(Command("新建模板", self.new_template))
+
+        self.selected_quick_command: List[Optional[Command]] = [
+            [c for c in self.command_list if c.name == "新建模板"][0],
+            [c for c in self.command_list if c.name == "管理模板"][0],
+            [c for c in self.command_list if c.name == "历史"][0],
+            [c for c in self.command_list if c.name == "多选"][0],
+            [c for c in self.command_list if c.name == "作业结算"][0],
+            [c for c in self.command_list if c.name == "卫生结算"][0],
+            [c for c in self.command_list if c.name == "考勤"][0],
+            [c for c in self.command_list if c.name == "检查更新"][0],
+            [c for c in self.command_list if c.name == "更新日志"][0]
+        ]
+
+        self.fast_command_edit_state = False
+
+
+
+        self.refresh_quick_command_btns()
+
+        self.HyperlinkLabel.clicked.connect(self.edit_fast_command_btns)
         self.CardWidget.clicked.connect(self.show_attendance)
         self.pushButton_3.clicked.connect(self.about)
         self.pushButton_4.clicked.connect(self.open_setting_window)
+
+        try:
+            self.load_quick_settings_from_list(
+                pickle.load(open(os.getcwd() + os.sep + f"chunks/{self.current_user}/quick_commands.pkl", 
+                        "rb")))
+        except FileNotFoundError:
+            Base.log("W", "未找到快速命令文件，重置为默认", "MainWindow.load_settings")
+
         self.listWidget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.listWidget.doubleClicked.connect(self.click_opreation)
         self.tip_update.connect(lambda args: self._show_tip_int(*args))
@@ -521,6 +584,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.pushButton.clicked.connect(self.dont_click)
         self.listView_data:List[Callable] = []
         "ListView数据，用于存储主窗口侧边ListView里面的命令（对应里面的每一项）"
+        self.lastest_listview: Optional[ListView] = None
+        "最近一次用self.list_view()开启的ListView"
         self.textBrowser.setReadOnly(True)
         self.textBrowser.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         self.setFixedSize(self.width(), self.height())
@@ -569,6 +634,93 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             "所以这里为了保证体验",
             "先留着这玩意占位置吧",
             "绝对不是因为懒才不改"])
+        
+    @property
+    def command_key_list(self) -> List[Optional[str]]:
+        "快捷键列表（返回功能的名称）"
+        return [c.name if c else None for c in self.selected_quick_command]
+    
+
+
+
+    def refresh_quick_command_btns(self, reset_callable: bool = True):
+        for i in range(1, 9 + 1):
+            btn: PushButton = getattr(self, f"PushButton_{i}")
+            if self.selected_quick_command[i - 1] is not None:
+                btn.setText(self.selected_quick_command[i - 1].name)
+                if reset_callable:
+                    try:
+                        btn.clicked.disconnect()
+                    except RuntimeError as e:
+                        Base.log("W", f"尝试断开未连接的信号：(PushButton_{i}) {e}")
+                    btn.clicked.connect(self.selected_quick_command[i - 1].callable)
+                btn.setEnabled(True)
+            else:
+                btn.setText("未指定")
+                btn.setEnabled(False)
+            btn.update()
+
+    def edit_fast_command_btns(self):
+        if not hasattr(self, "fast_command_edit_state"):
+            self.fast_command_edit_state = False
+        self.fast_command_edit_state = not self.fast_command_edit_state
+
+        if self.fast_command_edit_state:
+            Base.log("I", "进入快捷命令编辑模式", "MainWindow.edit_fast_command_btns")
+            self.CaptionLabel.setText("快速管理 (编辑中)")
+            self.HyperlinkLabel.setText("完成")
+            for i in range(1, 9 + 1):
+                btn: PushButton = getattr(self, f"PushButton_{i}")
+                def _select_command(btn: PushButton, i: int = i) -> int:
+                    def _set_quick_command(cmd: object, i: int = i) -> None:
+                        self.selected_quick_command[i - 1] = cmd
+                        Base.log("I", f"第{i}个快捷命令已被更改：{btn.text()} -> {cmd.name if cmd is not None else '未指定'}")
+                        btn.setText(cmd.name if cmd is not None else "未指定")
+                        self.refresh_quick_command_btns(False)
+                        for i in range(1, 9 + 1):
+                            _btn: PushButton = getattr(self, f"PushButton_{i}")
+                            _btn.setEnabled(True)
+                    self.list_view([("选择要设置的快捷命令", lambda: None)] +
+                                   [("", lambda: None)] * 2 + 
+                                   [(c.name, lambda *, c=c:_set_quick_command(c), self.refresh_quick_command_btns(False)) for c in self.command_list] + 
+                                   [("<不指定>", lambda: _set_quick_command(None))],
+                                   "选择要设置的快捷命令", self, select_once_then_exit=True)
+
+                try:
+                    btn.clicked.disconnect()
+                except RuntimeError as e:
+                    Base.log("W", f"尝试断开未连接的信号：(PushButton_{i}) {e}", "MainWindow.edit_fast_command_btns")
+                btn.clicked.connect(lambda *, _select_command=_select_command, btn=btn: (_select_command(btn), self.refresh_quick_command_btns(False)))
+                btn.setEnabled(True)
+
+        else:
+            Base.log("I", "退出快捷命令编辑模式", "MainWindow.edit_fast_command_btns")
+            self.CaptionLabel.setText("快速管理")
+            self.show_tip("快捷命令保存成功", duration=3275)
+            self.HyperlinkLabel.setText("编辑")
+            self.refresh_quick_command_btns(True)
+            self.save_fast_command_config()
+
+    def save_fast_command_config(self):
+        Base.log("I", "保存快捷命令配置", "MainWindow.save_fast_command_config")
+        pickle.dump(self.command_key_list, 
+                    open(os.getcwd() + os.sep + f"chunks/{self.current_user}/quick_commands.pkl", "wb"),
+                    pickle.HIGHEST_PROTOCOL)
+        self.refresh_quick_command_btns()
+
+
+    def load_quick_settings_from_list(self, cmdlist: List[str]):
+        "从名称列表中加载快捷命令"
+        self.selected_quick_command = [None] * 9
+        avaliable = [c.name for c in self.command_list]
+
+        for i in range(9):
+            if cmdlist[i] in avaliable:
+                self.selected_quick_command[i] = [c for c in self.command_list if c.name == cmdlist[i]][0]
+            else:
+                Base.log("W", f"快捷命令{repr(cmdlist[i])}不存在，将会重置为默认(未指定)")
+                self.selected_quick_command[i] = None
+        self.refresh_quick_command_btns()
 
     def __repr__(self):     # 其实是因为直接继承ClassObjects的repr会导致无限递归
         return super(MyMainWindow, self).__repr__()
@@ -836,6 +988,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     def read_video(self):
         if not has_cv2:
             return
+        if not os.path.isfile("background.mp4"):
+            Base.log("W", "没有找到视频文件，请检查", "MainWindow.read_video")
+            self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
+            "当前已经暂时关闭动态背景")
+            self.use_animate_background = False
+            return
         while self.is_running:
             self.capture = cv2.VideoCapture("background.mp4")
             last_frame_time = time.time()
@@ -847,13 +1005,15 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                     self.video_framerate = self.video_framecount
                     self.video_framecount = 0
                     self.video_framerate_update_time = time.time()
-
-                if time.time() - last_frame_time <  (1 / min(self.max_framerate, video_fps)):
-                    time.sleep(max(1 / min(self.max_framerate, video_fps) - (time.time() - last_frame_time), 0))
+                fd = (1 / max(1, min(self.max_framerate, video_fps)))
+                if time.time() - last_frame_time <  fd:
+                    time.sleep(max(fd - (time.time() - last_frame_time), 0))
                 last_frame_time = time.time()
                 
                 
                 ret, frame = self.capture.read()
+                if frame is None:
+                    Base.log("E", "没有找到视频帧，可能是出错了，在30秒后重试", "MainWindow.read_video")
                 if not ret:
                     self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     ret, frame = self.capture.read()
@@ -1196,7 +1356,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self,
             self,
             modify,
-            self.listbox if listbox_widget is None else listbox_widget,
+            self.lastest_listview if listbox_widget is None else listbox_widget,
             listbox_index,
             readonly or (not modify.executed)
         )
@@ -1302,6 +1462,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         Base.log("I", "从文件中加载设置", "MainWindow.load_settings")
         settings.load_from(os.getcwd() + os.sep + f"chunks/{self.current_user}/settings.dat")
         self.set_settings(**settings.get_dict())
+        
 
 
     def set_settings(self, **kwargs):
@@ -1715,15 +1876,17 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                   data:List[Tuple[str, Callable]], 
                   title:str, 
                   master:Union[MyMainWindow, MyWidget]=None,
-                  commands:List[Tuple[str, Callable]]=None):
+                  commands:List[Tuple[str, Callable]]=None,
+                  select_once_then_exit:bool=False):
         """显示一个列表框
         
         :param data: 数据, 每个元素是一个元组，第一个元素是显示的文本，第二个元素是一个函数，点击后执行
         :param title: 标题
         :param master: 父窗口
         """
-        self.listbox = ListView(mainwindow=self, master_widget=master, data=data, title=title, commands=commands)
-        self.listbox.show()
+        self.lastest_listview = ListView(mainwindow=self, master_widget=master, 
+                                         data=data, title=title, commands=commands, select_once_then_exit=select_once_then_exit)
+        self.lastest_listview.show()
 
     @Slot()
     def student_rank(self):
@@ -2684,7 +2847,8 @@ class ListView(MyWidget):
                  data:List[Tuple[str, Callable, Optional[Tuple[QColor, QColor, int, int]]]]=None,
                  args:Any=None,
                  commands:List[Tuple[str, Callable]]=None,
-                 allow_pre_action:bool=False):
+                 allow_pre_action:bool=False,
+                 select_once_then_exit:bool=False):
         if data is None:
             data = [("空", lambda: None)]
         if commands is None:
@@ -2714,6 +2878,7 @@ class ListView(MyWidget):
         self.setting_command = False
         self.setCommands(commands, force=True)
         self.commands = commands
+        self.select_once_then_exit = select_once_then_exit
         self.widget_items: List[QListWidgetItem] = []
 
     @Slot()
@@ -2968,6 +3133,8 @@ class ListView(MyWidget):
     	# 弹出消息框
         Base.log("I", f"点击了{repr(self.str_list[qModelIndex.row()])}, 调用函数{repr(self.data[qModelIndex.row()][1])}", "ListView")
         self.data[qModelIndex.row()][1]()
+        if self.select_once_then_exit:
+            self.close()
 
     def closeEvent(self, event:QEvent):
         Base.log("I", "ListView窗口关闭（通过关闭事件）", "ListView")
