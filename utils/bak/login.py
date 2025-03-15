@@ -1,12 +1,55 @@
 import sys
+import os
 import traceback
+import base64
 try:
-    from src.core import stderr, stdout, Base
+    from src.core import stderr_orig, stdout_orig, Base
 except Exception as e:
     print(traceback.format_exc())
-    from core import stderr, stdout, Base
-sys.stdout = stdout
-sys.stderr = stderr
+    from core import stderr_orig, stdout_orig, Base
+    
+sys.stdout = stdout_orig
+sys.stderr = stderr_orig
+
+
+USER_INFO = "user_info.ncw"
+"所有用户的列表"
+
+USER_RECORD = "last_usr.ncw"
+"用户登录的记录，里面用base64存着上次登录的用户"
+
+recently_signed_in = []
+"刚刚注册的用户"
+
+def get_last_user(default: str = "default"):
+    if not os.path.isfile(USER_RECORD): # 如果存储上次用户的文件不存在
+        return default     # 就返回默认用户
+    
+    else: # 存在的话
+        try:
+            with open(USER_RECORD, mode="rb") as f:
+                raw_data = f.read()
+        except (BufferError, MemoryError): # 出错了也返回默认
+            print(traceback.format_exc())
+            return default
+        # 就返回用户名
+        try:
+            return base64.b64decode(raw_data).decode()
+        except (ValueError, EOFError):
+            print(traceback.format_exc())
+            return default
+        
+def set_last_user(user: str = "default"):
+    if os.path.isdir(USER_RECORD):
+        os.rmdir(USER_RECORD)
+    data = base64.b64encode(user.encode())
+    with open(USER_RECORD, mode="wb") as f:
+        f.write(data)
+    # 不try-except了，要爆就爆吧
+
+
+
+
 
 def login():
     import customtkinter as ctk
@@ -21,7 +64,7 @@ def login():
         Base.log("E", "登录窗口初始化失败", "login")
     else:
         Base.log("I", "登录窗口初始化成功", "login")
-    
+    last_user = get_last_user()
     window = ctk.ctk_tk.CTk()
     the_screen_width = window.winfo_screenwidth()
     the_screen_height = window.winfo_screenheight()
@@ -38,7 +81,7 @@ def login():
     ctk.CTkLabel(window, text="用户名:").grid(row=1, column=0, padx=(10,0), pady=(10,0))
     ctk.CTkLabel(window, text="密码:").grid(row=2, column=0, padx=(10,0), pady=(10,0))
     var_usr_name = ctk.StringVar()
-    var_usr_name.set("default")
+    var_usr_name.set(last_user)
     entry_usr_name = ctk.CTkEntry(window, textvariable=var_usr_name, width=180)
     entry_usr_name.grid(row=1, column=1, columnspan=2, padx=(10,0), pady=(10,0))
     var_usr_pwd = ctk.StringVar()
@@ -52,8 +95,8 @@ def login():
         usr_name = var_usr_name.get()
         Base.log("I", f"usr_login()被调用，用户名{repr(usr_name)}")
         usr_pwd = var_usr_pwd.get()
-        if os.path.exists("user_info.ncw") == True:
-            with open("user_info.ncw", "rb") as f:
+        if os.path.exists(USER_INFO) == True:
+            with open(USER_INFO, "rb") as f:
                 en = f.read()
             b64_de = base64.b64decode(en)
             str_de = b64_de.decode("utf-8")
@@ -70,7 +113,11 @@ def login():
 
             if usr_pwd == str(usrs_info[str(usr_name)]):
                 Base.log("I", f"用户{repr(usr_name)}登录成功")
-                tkinter.messagebox.showinfo(title='你好', message='欢迎使用！' + usr_name)
+                set_last_user(usr_name)
+                if usr_name in recently_signed_in:
+                    tkinter.messagebox.showinfo(title='你好', message='很高兴见到你，' + usr_name + '！')
+                else:
+                    tkinter.messagebox.showinfo(title='你好', message='欢迎回来，' + usr_name + '！')
                 window.destroy()
             else:
                 Base.log("I", f"用户{repr(usr_name)}登录失败，密码错误")
@@ -87,8 +134,8 @@ def login():
             np = new_pwd.get()
             npf = new_pwd_confirm.get()
             nn = new_name.get()
-            if os.path.exists("user_info.ncw") == True:
-                with open("user_info.ncw", "rb") as f:
+            if os.path.exists(USER_INFO) == True:
+                with open(USER_INFO, "rb") as f:
                     en = f.read()
                 b64_de = base64.b64decode(en)
                 str_de = b64_de.decode("utf-8")
@@ -107,14 +154,14 @@ def login():
             elif np == "":
                 tkinter.messagebox.showerror('错误！', '必须设置密码！')
             else:
-                if os.path.exists("user_info.ncw") == False:
+                if os.path.exists(USER_INFO) == False:
                     info = nn + ":" + np + ";"
                     str_en = info.encode("utf-8")
                     b64_en = base64.b64encode(str_en)
-                    with open("user_info.ncw", "wb") as f:
+                    with open(USER_INFO, "wb") as f:
                         f.write(b64_en)
                 else:
-                    with open("user_info.ncw", "rb") as f:
+                    with open(USER_INFO, "rb") as f:
                         en = f.read()
                     b64_de = base64.b64decode(en)
                     str_de = b64_de.decode("utf-8")
@@ -122,20 +169,22 @@ def login():
                     info = str_de + linshi
                     str_en = info.encode("utf-8")
                     b64_en = base64.b64encode(str_en)
-                    with open("user_info.ncw", "wb") as f:
+                    with open(USER_INFO, "wb") as f:
                         f.write(b64_en)
+                # 将这个用户名存在列表里
+                recently_signed_in.append(nn)
                 tkinter.messagebox.showinfo('你好！', '注册成功！')
                 # 然后销毁窗口。
                 window_sign_up.destroy()
         window_sign_up = ctk.CTkToplevel(window)
-        win_width_2 = int((the_screen_width / 1920) * 300)
+        win_width_2 = int((the_screen_width / 1920) * 400)
         win_height_2 = int((the_screen_height / 1080) * 200)
         win_x_2 = str(int((int(the_screen_width) - int(win_width_1)) / 2) + 150)
         win_y_2 = str(int((int(the_screen_height) - int(win_height_1)) / 2) + 100)
         window_sign_up.geometry(f"{win_width_2}x{win_height_2}+{win_x_2}+{win_y_2}")
         window_sign_up.title("注册")
         new_name = ctk.StringVar()
-        new_name.set("default")
+        new_name.set(usr_name)
         ctk.CTkLabel(window_sign_up, text='用户名: ').grid(row=0, column=0, padx=(10,0), pady=(10,0))
         entry_new_name = ctk.CTkEntry(window_sign_up, textvariable=new_name)
         entry_new_name.grid(row=0, column=1, columnspan=2, padx=(10,0), pady=(10,0))
@@ -149,7 +198,6 @@ def login():
         entry_usr_pwd_confirm.grid(row=2, column=1, columnspan=2, padx=(10,0), pady=(10,0))
         btn_comfirm_sign_up = ctk.CTkButton(window_sign_up, text='注册', command=sign, width=8)
         btn_comfirm_sign_up.grid(row=4, column=0, columnspan=2, padx=(50,0), pady=(10,0))
-        window_sign_up.lift()
     btn_login = ctk.CTkButton(window, text='登录', width=4, command=usr_login)
     btn_login.grid(row=3, column=1, padx=(0,40), pady=(10,0))
     btn_sign_up = ctk.CTkButton(window, text='注册', width=4, command=usr_sign_up)

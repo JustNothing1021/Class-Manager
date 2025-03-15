@@ -2,12 +2,12 @@
 默认数据。
 """
 
-from utils.base import (Class, Student, Achievement, AchievementTemplate, 
+from utils.classdatatypes import (Class, Student, Achievement, AchievementTemplate, 
                       ScoreModification, ScoreModificationTemplate, OrderedKeyList,
                       AttendanceInfo, Day, ClassStatusObserver, AchievementStatusObserver,
-                      Group, LOG_FILE_PATH, HomeworkRule, DummyStudent, History)
+                      Group,  HomeworkRule, DummyStudent, History)
 
-from utils.base import (steprange, SOUND_BRUH, inf, ninf, nan)
+from utils.basetypes import (steprange, SOUND_BRUH, inf, nan)
 
 from typing import Dict
 
@@ -463,7 +463,7 @@ DEFAULT_CLASSES["CLASS_TEST"].groups = {
 DEFAULT_ACHIEVEMENTS:Dict[str, AchievementTemplate] = {
 
         "beyond_life_and_death": AchievementTemplate("beyond_life_and_death", "超越生死", "经历了人生的大波折，我已看淡生死了",
-                                                    lowest_score_range=(ninf, -20),
+                                                    lowest_score_range=(-inf, -20),
                                                     score_range=(1, inf),
                                                     sound=SOUND_BRUH,
                                                     icon="img/tips/beyond_life_and_death.jpg",

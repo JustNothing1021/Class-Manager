@@ -1,50 +1,29 @@
-"""
-算法的基层。
-"""
-
+import random
+import json
 import time
-import base64
-import pickle
-import dill as pickle
-import pickle as pickle_orig
-from utils.base import sys
-import os
 import traceback
 import copy
-from queue import Queue
-from typing import *
-import random
+import os
 import signal
-import json
 import warnings
-from abc import ABC, abstractmethod
-from collections import OrderedDict
-from types import TracebackType, FrameType
-
-from utils.base import (Object, LOG_FILE_PATH,  Stack, Base, log_file,  HighPrecision)
-
-from utils.base import (steprange, ClassDataObj, OrderedKeyList, SupportsKeyOrdering,
-                        Student, StrippedStudent, DummyStudent, HomeworkRule, Day,
-                        ClassData, Class, Group, AttendanceInfo, DayRecord, History,
-                        ScoreModification, ScoreModificationTemplate,
-                        Achievement, AchievementTemplate,
-                      stderr_orig, stdout_orig, Thread, sys as base_sys, inf, ninf, nan,
-                      int8, int16, int32, int64, uint8, uint16, uint32, uint64)
-
-from utils.functions import (play_sound, play_music, stop_music)
-
-from utils.update_check import (VERSION_INFO, 
-                          CORE_VERSION, 
-                          CORE_VERSION_CODE, 
-                          CLIENT_VERSION, 
-                          CLIENT_VERSION_CODE,
-                          CORE_UPDATE_LOG,
-                          CLIENT_UPDATE_LOG,
-                          )
-
-
+import base64
+import pickle as pickle_orig
+import pickle as pickle
+import dill as pickle
+from queue import Queue
 from PySide6.QtGui import QColor
-
+from typing import *
+from types import TracebackType, FrameType
+from utils.basetypes import OrderedKeyList, SupportsKeyOrdering
+from utils.basetypes import Object, Base, HighPrecision
+from utils.basetypes import int8, int16, int32, int64, inf, nan, log_file
+from utils.basetypes import sys, Stack, Thread, LOG_FILE_PATH, steprange
+from utils.update_check import VERSION_INFO, CLIENT_UPDATE_LOG
+from utils.functions import play_music, play_sound, stop_music
+from utils.classdatatypes import (Student, DummyStudent, StrippedStudent,
+        Class, Group, AttendanceInfo, ScoreModification, ScoreModificationTemplate,
+        Achievement, AchievementTemplate, HomeworkRule, DayRecord, Day,
+        ClassData, History, ClassObj)
 
 debug = True
 
@@ -56,6 +35,7 @@ CORE_VERSION = VERSION_INFO["core_version"]
 
 CORE_VERSION_CODE = VERSION_INFO["core_version_code"]
 "版本号代码"
+
 
 try:
     from utils.default import (DEFAULT_ACHIEVEMENTS,
@@ -98,12 +78,6 @@ def sigint_handler(sigval: Optional[int], frame: Optional[FrameType]):
 signal.signal(signal.SIGINT, sigint_handler)
 
 
-
-
-
-
-
-
 def utc(precision:int=3):
     """返回当前时间戳
 
@@ -113,9 +87,7 @@ def utc(precision:int=3):
 
 
 
-
-
-class ClassObj(ClassDataObj):
+class ClassObj(ClassObj):
 
 
 
@@ -165,9 +137,9 @@ class ClassObj(ClassDataObj):
                 raise
             Base.log_exc("读取存档" + path + "失败：", "Mainhread.load_data")
             Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
-            ClassObj.reset_data(path)
             Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
-            QMessageBox.critical(None, "出错了！", f"从[{path}]加载文件出错：\n{traceback.format_exc()}\n所有数据已被重置。\n\n（你没有忘记建还原点，对吧？）")
+            QMessageBox.critical(None, "出错了！", f"从[{path}]加载文件出错：\n{traceback.format_exc()}\n所有数据将被重置。\n\n（你没有忘记建还原点，对吧？）")
+            ClassObj.reset_data(path)
             return ClassObj.load_data(path, strict=True)
         
 
@@ -438,7 +410,7 @@ class ClassObj(ClassDataObj):
                          last_reset:float,
                          history_data:Dict[float, Dict[str, Class]],
                          classes:Dict[str, Class],
-                         templates:Dict[str, ScoreModificationTemplate],
+                         templates:Dict[str, "ClassObj.ScoreModificationTemplate"],
                          achievements:Dict[str, AchievementTemplate],
                          last_start_time:float,
                          weekday_record:List[DayRecord],
@@ -981,7 +953,7 @@ class ClassObj(ClassDataObj):
         
 
 
-    def retract_last(self) -> Tuple[bool, str]:
+    def retract_lastest(self) -> Tuple[bool, str]:
         """撤回上步"""
         if self.class_obs.opreation_record.is_empty():
             Base.log("W","没有可撤回的点评","MainThread.retract_last")
@@ -999,7 +971,7 @@ class ClassObj(ClassDataObj):
         return result, info
 
 
-    def reset(self) -> Dict[str, Class]:
+    def reset_scores(self) -> Dict[str, Class]:
         "结算所有数据"
         history = ClassObj.History(copy.deepcopy(self.classes),  self.weekday_record)
         Base.log("W", "正在重置所有班级...", "ClassObjects.reset")
@@ -1214,58 +1186,11 @@ class ClassObj(ClassDataObj):
                                     raise ValueError(f"找不到对应的数据，uuid: {uuid}")
                                             # weeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 
-
-
-
-class Chunk(Object):
-    "分块"
-
-    def __init__(self, classes: Dict[str, ClassObj.Class], user: str = DEFAULT_USER):
-        self.classes = classes
-
-    def __repr__(self) -> str:
-        return f"Chunk({self.classes})"
-    
-    def save_to(self, path: str):
-        "保存到文件"
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        for class_id, class_obj in self.classes.items():
-            curdir = os.path.join(path, class_id)
-            os.makedirs(curdir, exist_ok=True)  # 创建这个班级的目录
-
-            os.makedirs(os.path.join(curdir, "students"), exist_ok=True)  # 创建学生目录
-            for student in class_obj.students.values():
-                string = student.to_string()
-                with open(os.path.join(curdir, "students", student.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-
-            for group in class_obj.groups.values():
-                string = group.to_string()
-                with open(os.path.join(curdir, "groups", group.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-
-            for achievement_template in class_obj.achievement_templates.values():
-                string = achievement_template.to_string()
-                with open(os.path.join(curdir, "achievement_templates", achievement_template.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-
-            for achievement in class_obj.achievements.values():
-                string = achievement.to_string()
-                with open(os.path.join(curdir, "achievements", achievement.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-
-            for modify_template in class_obj.modify_templates.values():
-                string = modify_template.to_string()
-                with open(os.path.join(curdir, "modify_templates", modify_template.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-                
-
-            for modify in class_obj.modifies.values():
-                string = modify.to_string()
-                with open(os.path.join(curdir, "modifies", modify.uuid), "w", encoding="utf-8") as f:
-                    f.write(string)
-
+ClassDataObjType = Union[
+        Student, Class, 
+        ScoreModification, ScoreModificationTemplate, 
+        Achievement, AchievementTemplate, 
+        Group]
 
 
 
@@ -1492,5 +1417,13 @@ class AchievementStatusObserver(Object):
             def stop(self):
                 "停止侦测器"
                 self.on_active = False
+
+
+
+
+
+
+
+
 
 

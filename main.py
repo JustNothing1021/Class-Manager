@@ -23,7 +23,7 @@ from   collections        import OrderedDict
 from   shutil             import copytree, rmtree, copy as shutil_copy
 from   concurrent.futures import ThreadPoolExecutor
 from   utils.login        import login
-from   utils.base         import format_exc_like_java, get_function_namespace
+from   utils.basetypes         import format_exc_like_java, get_function_namespace
 from   types              import TracebackType, FrameType
 from   PySide6.QtCore     import *
 from   PySide6.QtGui      import *
@@ -43,7 +43,7 @@ from   utils.classobjects import (sys as base_sys, Class, Student, Achievement, 
                                 ScoreModification, ScoreModificationTemplate, StrippedStudent, Day,
                                 AttendanceInfo, DayRecord, ClassStatusObserver, AchievementStatusObserver,
                                 Group, HomeworkRule, DummyStudent, History, Stack, Base, ClassObj,
-                                LOG_FILE_PATH, DEFAULT_CLASSES, DEFAULT_ACHIEVEMENTS,
+                                DEFAULT_CLASSES, DEFAULT_ACHIEVEMENTS,
                                 DEFAULT_SCORE_TEMPLATES, DEFAULT_USER, log_file)
 from   utils.classobjects  import (steprange, play_sound, play_music, stop_music, Thread, default_class_key)
 from   utils.classobjects  import (CORE_VERSION, CORE_VERSION_CODE, VERSION_INFO, CLIENT_UPDATE_LOG)
@@ -52,7 +52,7 @@ from   utils.functions     import exc_info_short, pass_exceptions
 from   utils.widgets       import ObjectButton, ProgressAnimatedListWidgetItem, SideNotice
 from   utils.prompts       import question_yes_no as question_yes_no_orig
 from   utils.settings      import SettingsInfo
-from   utils.base          import null
+from   utils.basetypes          import null
 from   utils.system        import system, SystemLogger, output_list, stderr_queue, stdout_queue
 from   utils.high_precision_operation import HighPrecision as Decimal
 
@@ -445,7 +445,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     label_update = Signal()
     """标签更新信号"""
 
-    def __init__(self, *args, class_name="2216班", current_user=DEFAULT_USER, class_key="CLASS_2216"):
+    def __init__(self, *args, class_name="测试班级", current_user=DEFAULT_USER, class_key="CLASS_TEST"):
         """窗口初始化
 
         :param class_name: 班级名称
@@ -489,83 +489,82 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.framerate_update_time = time.time()
         self.updator_thread = UpdateThread(mainwindow=self)
         class Command:
-            def __init__(self, name: str, callable: str):
+            def __init__(self, key: str, name: str, callable: str):
                 self.name = name
                 self.callable = callable
+                self.key = key
             def __repr__(self):
-                return f"Command(name={repr(self.name)}, callable={repr(self.callable)})"
+                return f"Command(key={repr(self.key)}.name={repr(self.name)}, callable={repr(self.callable)})"
             
         self.command_list: List[Command] = []
         self.action.triggered.connect(self.student_rank)
-        self.command_list.append(Command("学生排名", self.student_rank))
-        self.action_2.triggered.connect(self.manage_template)
-        self.command_list.append(Command("管理模板", self.manage_template))
+        self.command_list.append(Command("stu_ranking", "学生排名", self.student_rank))
+        self.action_2.triggered.connect(self.manage_templates)
+        self.command_list.append(Command("manage_templates", "管理模板", self.manage_templates))
         self.action_3.triggered.connect(self.open_setting_window)
-        self.command_list.append(Command("设置", self.open_setting_window))
-        self.action_5.triggered.connect(self.multi_select_and_send)
-        self.command_list.append(Command("多选", self.multi_select_and_send))
-        self.action_7.triggered.connect(self.retract_last)
-        self.command_list.append(Command("撤销", self.retract_last))
+        self.command_list.append(Command("setting_menu", "设置菜单", self.open_setting_window))
+        self.action_5.triggered.connect(self.scoring_select)
+        self.command_list.append(Command("scoring_select", "多选学生", self.scoring_select))
+        self.action_7.triggered.connect(self.retract_lastest)
+        self.command_list.append(Command("retract_lastest", "撤销上步", self.retract_lastest))
         self.action_8.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(1))
         self.action_9.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(0))
         self.action_10.triggered.connect(self.save)
-        self.command_list.append(Command("保存", self.save))
-        self.action_12.triggered.connect(self.reset)
-        self.command_list.append(Command("重置", self.reset))
+        self.command_list.append(Command("save_data", "保存数据", self.save))
+        self.action_12.triggered.connect(self.reset_scores)
+        self.command_list.append(Command("reset_scores", "重置分数", self.reset_scores))
         self.action_13.triggered.connect(self.show_all_history)
-        self.command_list.append(Command("历史", self.show_all_history))
+        self.command_list.append(Command("show_all_history", "历史记录", self.show_all_history))
         self.action_14.triggered.connect(self.save_data_as)
-        self.command_list.append(Command("另存为", self.save_data_as))
+        self.command_list.append(Command("save_data_as", "另存为", self.save_data_as))
         self.action_15.triggered.connect(self.music_selector)
-        self.command_list.append(Command("音乐", self.music_selector))
-        self.action_16.triggered.connect(self.show_recovery_points)
-        self.command_list.append(Command("显示恢复点", self.show_recovery_points))
-        self.action_17.triggered.connect(self.create_recovery_point)
-        self.command_list.append(Command("创建恢复点", self.create_recovery_point))
-        self.action_18.triggered.connect(self.cleaing_sumup)
-        self.command_list.append(Command("卫生结算", self.cleaing_sumup))
+        self.command_list.append(Command("music_selector", "播放音乐", self.music_selector))
+        self.action_16.triggered.connect(self.show_recover_points)
+        self.command_list.append(Command("show_recover_points", "显示恢复点", self.show_recover_points))
+        self.action_17.triggered.connect(self.create_recover_point)
+        self.command_list.append(Command("create_recover_point", "创建恢复点", self.create_recover_point))
+        self.action_18.triggered.connect(self.cleaing_score_sum_up)
+        self.command_list.append(Command("cleaning_score_sum_up", "卫生分结算", self.cleaing_score_sum_up))
         self.action_19.triggered.connect(self.show_attendance)
-        self.command_list.append(Command("考勤", self.show_attendance))
+        self.command_list.append(Command("show_attendance", "考勤记录", self.show_attendance))
         self.action_20.triggered.connect(self.show_noise_detector)
-        self.command_list.append(Command("噪音", self.show_noise_detector))
+        self.command_list.append(Command("show_noise_detector", "噪音检测", self.show_noise_detector))
         self.action_21.triggered.connect(self.random_select)
-        self.command_list.append(Command("随机选取", self.random_select))
-        self.action_22.triggered.connect(self.homework_sumup)
-        self.command_list.append(Command("作业结算", self.homework_sumup))
-        self.action_23.triggered.connect(self.about)
-        self.command_list.append(Command("关于", self.about))
+        self.command_list.append(Command("random_select", "随机选取", self.random_select))
+        self.action_22.triggered.connect(self.homework_score_sum_up)
+        self.command_list.append(Command("homework_score_sum_up", "作业分结算", self.homework_score_sum_up))
+        self.action_23.triggered.connect(self.about_this)
+        self.command_list.append(Command("about_this", "关于软件", self.about_this))
         self.action_24.triggered.connect(self.show_update_log)
-        self.command_list.append(Command("更新日志", self.show_update_log))
-        self.action_25.triggered.connect(lambda: Thread(target=self.updator_thread.detect_new_version).start())
-        self.command_list.append(Command("检查更新", lambda: Thread(target=self.updator_thread.detect_new_version).start()))
+        self.command_list.append(Command("show_update_log", "更新日志", self.show_update_log))
+        self.action_25.triggered.connect(lambda: Thread(target=lambda: self.updator_thread.detect_new_version(False)).start())
+        self.command_list.append(Command("detect_new_version", "检查更新", lambda: Thread(target=lambda: self.updator_thread.detect_new_version(False)).start()))
         self.action_26.triggered.connect(self.refresh_window)
-        self.command_list.append(Command("刷新", self.refresh_window))
+        self.command_list.append(Command("refresh_window", "刷新窗口", self.refresh_window))
         self.action_28.triggered.connect(self.show_debug_window)
-        self.command_list.append(Command("调试", self.show_debug_window))
+        self.command_list.append(Command("show_debug_window", "调试菜单", self.show_debug_window))
         self.actionNew_Template.triggered.connect(self.new_template) # 笑死唯一一个不是默认名字的action控件
-        self.command_list.append(Command("新建模板", self.new_template))
+        self.command_list.append(Command("new_template", "新建模板", self.new_template))
 
         self.selected_quick_command: List[Optional[Command]] = [
-            [c for c in self.command_list if c.name == "新建模板"][0],
-            [c for c in self.command_list if c.name == "管理模板"][0],
-            [c for c in self.command_list if c.name == "历史"][0],
-            [c for c in self.command_list if c.name == "多选"][0],
-            [c for c in self.command_list if c.name == "作业结算"][0],
-            [c for c in self.command_list if c.name == "卫生结算"][0],
-            [c for c in self.command_list if c.name == "考勤"][0],
-            [c for c in self.command_list if c.name == "检查更新"][0],
-            [c for c in self.command_list if c.name == "更新日志"][0]
+            [c for c in self.command_list if c.key == "new_template"][0],
+            [c for c in self.command_list if c.key == "manage_templates"][0],
+            [c for c in self.command_list if c.key == "show_all_history"][0],
+            [c for c in self.command_list if c.key == "scoring_select"][0],
+            [c for c in self.command_list if c.key == "homework_score_sum_up"][0],
+            [c for c in self.command_list if c.key == "cleaning_score_sum_up"][0],
+            [c for c in self.command_list if c.key == "show_attendance"][0],
+            [c for c in self.command_list if c.key == "detect_new_version"][0],
+            [c for c in self.command_list if c.key == "show_update_log"][0]
         ]
 
         self.fast_command_edit_state = False
-
-
 
         self.refresh_quick_command_btns()
 
         self.HyperlinkLabel.clicked.connect(self.edit_fast_command_btns)
         self.CardWidget.clicked.connect(self.show_attendance)
-        self.pushButton_3.clicked.connect(self.about)
+        self.pushButton_3.clicked.connect(self.about_this)
         self.pushButton_4.clicked.connect(self.open_setting_window)
 
         try:
@@ -637,8 +636,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         
     @property
     def command_key_list(self) -> List[Optional[str]]:
-        "快捷键列表（返回功能的名称）"
-        return [c.name if c else None for c in self.selected_quick_command]
+        "快捷键列表（返回功能的key）"
+        return [c.key if c else None for c in self.selected_quick_command]
     
 
 
@@ -710,16 +709,20 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     def load_quick_settings_from_list(self, cmdlist: List[str]):
-        "从名称列表中加载快捷命令"
+        "从名称或者key值列表中加载快捷命令"
         self.selected_quick_command = [None] * 9
         avaliable = [c.name for c in self.command_list]
+        avaliable2 = [c.key for c in self.command_list]
 
         for i in range(9):
             if cmdlist[i] in avaliable:
                 self.selected_quick_command[i] = [c for c in self.command_list if c.name == cmdlist[i]][0]
+            elif cmdlist[i] in avaliable2:
+                self.selected_quick_command[i] = [c for c in self.command_list if c.key == cmdlist[i]][0]
             else:
                 Base.log("W", f"快捷命令{repr(cmdlist[i])}不存在，将会重置为默认(未指定)")
                 self.selected_quick_command[i] = None
+
         self.refresh_quick_command_btns()
 
     def __repr__(self):     # 其实是因为直接继承ClassObjects的repr会导致无限递归
@@ -767,7 +770,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             time.sleep(self.log_update_interval)
 
     @Slot()
-    def about(self):
+    def about_this(self):
         Base.log("I", "显示关于", "MainWindow.about")
         self.about_window = AboutWindow(self, self)
         self.about_window.show()
@@ -886,27 +889,27 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     def music_selector(self):
         Base.log("I", "按钮被点击", "MainWindow.music_selector")
         music_list:List[Tuple[str, Callable]]  = []
-        self.music_list:ListView
-        for f in os.listdir("res/music"):
+        self.music_listview:ListView
+        for f in os.listdir("audio/music"):
             if f.endswith((".mp3", ".ogg", ".wav", ".flac", ".m4a", ".ape")):
-                music_list.append((f.rsplit(".", 1)[0], lambda f=f:(play_music("res/music/" + f, volume=0.8, loop=2 ** 31 - 1),
-                                                                    self.music_list.close(),
+                music_list.append((f.rsplit(".", 1)[0], lambda f=f:(play_music("audio/music/" + f, volume=0.8, loop=2 ** 31 - 1),
+                                                                    self.music_listview.close(),
                                                                     self.show_tip(f"播放音乐：{f.rsplit('.', 1)[0]}"))))
         music_list.sort()
-        music_list.append(("<停止播放>", lambda:(stop_music(), self.music_list.close(),  self.show_tip("停止播放音乐"))))
+        music_list.append(("<停止播放>", lambda:(stop_music(), self.music_listview.close(),  self.show_tip("停止播放音乐"))))
 
         if len(music_list) == 0:
             Base.log("W", "没有找到音乐文件", "MainWindow.music_selector")
             return
         Base.log("I", f"找到{len(music_list)}个音乐文件", "MainWindow.music_selector")
         Base.log("I", "正在选择音乐", "MainWindow.music_selector")
-        self.music_list = ListView(
+        self.music_listview = ListView(
             self,
             self,
             "选择音乐",
             music_list
             )
-        self.music_list.show()
+        self.music_listview.show()
 
     @Slot()
     def show_noise_detector(self):
@@ -934,7 +937,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         style = random.randint(1, 4)
         if style == 1:
             "诈骗"
-            os.system("start https://www.bilibili.com/video/BV1kW411m7VP/")
+            os.startfile("https://www.bilibili.com/video/BV1kW411m7VP/")
         
         elif style == 2:
             "鬼畜一下"
@@ -989,11 +992,20 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         if not has_cv2:
             return
         if not os.path.isfile("background.mp4"):
-            Base.log("W", "没有找到视频文件，请检查", "MainWindow.read_video")
-            self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
-            "当前已经暂时关闭动态背景")
+            Base.log("W", "没有找到视频文件，将使用默认动态背景", "MainWindow.read_video")
+            if os.path.isfile("audio/video/default/bakcground.mp4"):
+                if os.path.isdir("audio/video/default/bakcground.mp4"):
+                    os.rmdir("audio/video/default/bakcground.mp4")
+                shutil_copy("audio/video/default/bakcground.mp4", "background.mp4")
+            
+                self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
+                "当前已经复制默认视频文件到根目录，如果需要使用其他动态背景直接替换background.mp4即可")
+            else:
+                self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
+                "如果需要使用动态背景将background.mp4复制到工具的根目录即可")
             self.use_animate_background = False
-            return
+            while not os.path.isfile("bakcground.mp4"):
+                time.sleep(5)
         while self.is_running:
             self.capture = cv2.VideoCapture("background.mp4")
             last_frame_time = time.time()
@@ -1012,8 +1024,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                 
                 
                 ret, frame = self.capture.read()
-                if frame is None:
-                    Base.log("E", "没有找到视频帧，可能是出错了，在30秒后重试", "MainWindow.read_video")
+
                 if not ret:
                     self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     ret, frame = self.capture.read()
@@ -1162,7 +1173,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         
 
     @Slot()
-    def manage_template(self):
+    def manage_templates(self):
         """管理模板窗口"""
         self.template_listbox = ListView(self, title="管理模板")
         self.manage_template_cursel_index = 0
@@ -1363,7 +1374,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.history_detail_window.show(readonly)
 
     @Slot()
-    def multi_select_and_send(self, *, students:List[Student]=None):
+    def scoring_select(self, *, students:List[Student]=None):
         """多选并发送"""
         if students is None:
             students = list(self.target_class.students.values()) # 如果没有传入学生则默认为当前班级的所有学生
@@ -1542,7 +1553,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.setting_window.show()
 
     @Slot()
-    def cleaing_sumup(self):
+    def cleaing_score_sum_up(self):
         """打扫汇总"""
         Base.log("I", "打开打扫汇总窗口", "MainWindow.cleaing_sumup")
         self.cleaing_sumup_window = CleaningScoreSumUpWidget(mainwindow=self, master_widget=self)
@@ -1632,7 +1643,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.random_select_window.show()
             
     @Slot()
-    def homework_sumup(self):
+    def homework_score_sum_up(self):
         """作业总结"""
         Base.log("I", "打开作业总结窗口", "MainWindow.homework_sumup")
         self.homework_sumup_window = HomeWorkSumUpWidget(mainwindow=self, master=self, target_class=self.target_class, target_students=self.target_class.students)
@@ -1640,7 +1651,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     
 
     @Slot()
-    def retract_last(self):
+    def retract_lastest(self):
         """撤回上步，覆写的是ClassObjects.retract_last"""
         if self.class_obs.opreation_record.size() == 0:
             Base.log("I", "暂无可以撤回的操作", "MainWindow.retract_last")
@@ -1648,16 +1659,16 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             return
         Base.log("I", "询问是否撤销上一次操作", "MainWindow.retract_last")
         if question_yes_no(self, "提示", f"是否撤销上一次操作？（共计{len(self.class_obs.opreation_record.peek())}条，包含\"{self.class_obs.opreation_record.peek()[0].title}\"等点评）", True, "question"):
-            super().retract_last()
+            super().retract_lastest()
             self.show_tip("撤销执行完成", duration=3275)
 
 
     @Slot()
-    def reset(self):
+    def reset_scores(self):
         """重置，覆写的是ClassObjects.reset"""
         Base.log("I", "询问是否重置", "MainWindow.reset")
         if question_yes_no(self, "提示", "是否进行周结算？"):
-            super().reset()
+            super().reset_scores()
     
     def show_tip(self, text:str, master:Optional["MainWindow"]=None, duration:int=3275, 
                  icon:Optional[QBitmap]=None, 
@@ -1833,7 +1844,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         row = 0
         col = 0
         max_col = (self.scrollArea.width() + 6) // (81 + 6)
-        height = (51 + 4) + 10
+        height = 0
         self.scrollAreaWidgetContents_2.setGeometry(0, 0, 901, max((51 + 4) * len(self.target_class.students), 410))
         for num, stu in self.target_class.students.items():
             self.stu_buttons[num] = ObjectButton(f"{stu.num}号 {stu.name}\n{stu.score}分", self, object=stu)
@@ -1854,7 +1865,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         row = 0
         col = 0
         max_col = (self.scrollArea.width() + 6) // (162 + 6)
-        height = (102 + 4) + 10
+        height = 0
         for num, grp in self.target_class.groups.items():
             if grp.belongs_to == self.target_class.key:
                 self.grp_buttons[num] = ObjectButton(f"{grp.name}\n{stu.score}分", self, object=stu)
@@ -1905,7 +1916,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         """显示小组排名"""
 
     @Slot()
-    def show_recovery_points(self):
+    def show_recover_points(self):
         """显示还原点"""
         Base.log("I", "读取列表", "MainWindow.show_recovery_point")
         if not os.path.exists(self.backup_path + "backup_info.dat"):
@@ -1960,13 +1971,13 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                 Base.log("I", "加载还原点成功", "MainWindow.load_recovery_point")
 
     @Slot()
-    def create_recovery_point(self):
+    def create_recover_point(self):
         """创建还原点"""
         Base.log("I", "询问是否创建还原点", "MainWindow.create_recovery_point")
         if question_yes_no(self, "提示", "是否在当前时间创建数据还原点？", True, "question"):                                                                                                                                                   
             self.script_backup("only_data")
             self.show_tip("还原点创建成功", self, 5000)
-            self.insert_action("创建还原点", self.show_recovery_points, (162, 216, 162, 232, 255, 255), 30)
+            self.insert_action("创建还原点", self.show_recover_points, (162, 216, 162, 232, 255, 255), 30)
         
 
     def update_label(self):
@@ -2210,9 +2221,10 @@ class UpdateThread(QThread):
                 self.mainwindow.client_version = CLIENT_VERSION
                 self.mainwindow.save_current_settings()
 
-        def detect_new_version(self):
+        def detect_new_version(self, from_system: bool = True):
             "检测是否有新版本"
             from utils.update_check import update_check, update, unzip_to_dir, get_update_zip
+            from utils.update_check import AUTHOR, MASTER, REPO_NAME
             Base.log("I", "检测更新...", "UpdateThread.detect_new_version")
             result = update_check(CORE_VERSION_CODE, CLIENT_VERSION_CODE)
             Base.log("I", f"返回结果：{result}", "UpdateThread.detect_new_version")
@@ -2227,6 +2239,14 @@ class UpdateThread(QThread):
             elif isinstance(result, dict):
                 self.mainwindow.show_tip("发现新版本！", duration=5000)
                 def update_self(self: UpdateThread):
+                    if not sys.argv[0].endswith(".py"):
+                        Base.log("I", "当前为发行版，无法自动更新", "UpdateThread.detect_new_version")
+                        self.mainwindow.question_if_exec(
+                            "提示",
+                            "是否要打开外部网站？"
+                            f"https://gitee.com/{AUTHOR}/{REPO_NAME}/{MASTER}",
+                            lambda: os.startfile(f"https://gitee.com/{AUTHOR}/{REPO_NAME}/{MASTER}")
+                        )
                     self.mainwindow.show_tip("正在下载更新...", duration=5000)
                     def _update(self: UpdateThread):
                         try:
@@ -2628,7 +2648,7 @@ class GroupWidget(GroupWindow.Ui_Form, MyWidget):
         self.textBrowser.setText(
             QCoreApplication.translate("Form", str(self.group.further_desc), None)) # 不能在别的线程设置，我也不知道为什么
         self.update_stu_list()
-        self.pushButton.clicked.connect(lambda: self.mainwindow.multi_select_and_send(
+        self.pushButton.clicked.connect(lambda: self.mainwindow.scoring_select(
             students=self.group.members))
         self.stu_list_update_timer = QTimer()
         self.student_list_update.connect(self.update_stu_list)
@@ -3531,7 +3551,7 @@ class SettingWidget(SettingWindow.Ui_Form, MyWidget):
         self.savepath_2.clear()
         self.savepath_2.addItem("无")
         self.savepath_2.addItem("仅保存存档")
-        self.savepath_2.addItem("把整个工具备份了（9号式暴力备份）")
+        self.savepath_2.addItem("把整个工具备份了（NoneColdWind式暴力备份）")
 
         self.log_keep.setValue(self.mainwindow.log_keep_linecount)
         self.log_update.setValue(self.mainwindow.log_update_interval)
@@ -4716,7 +4736,7 @@ class DebugWidget(DebugWindow.Ui_Form, MyWidget):
             ("self.findstu()", "查找学生"),
             ("os._exit(0)", "原地爆炸"),
             ("os.system(\"shutdown -s -f -t 114514\")", "原地爆炸升级版"),
-            ("self.reset()", "重置"),
+            ("self.reset_scores()", "重置"),
             ("""\
 [ s.num for s in
 self.random_choose_stu(

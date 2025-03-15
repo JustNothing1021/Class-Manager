@@ -5,12 +5,12 @@ import os
 import signal
 import zipfile
 import shutil
-from utils.base import stderr, stdout
+from utils.basetypes import stderr_orig, stdout_orig
 import sys
 
 
-sys.stdout = stdout
-sys.stderr = stderr
+sys.stdout = stdout_orig
+sys.stderr = stderr_orig
 
 
 TOKEN = "9bde0e6b1c0fca0ff36408665fb75306"
@@ -24,6 +24,21 @@ MASTER = "master"
 DOWNLOAD_URL = "https://gitee.com/api/v5/repos/{}/{}/zipball?access_token={}&ref={}".format(AUTHOR, REPO_NAME, TOKEN, MASTER)
 
 CLIENT_UPDATE_LOG = {
+    10414: """
+1.4.14（2025/3/15）更新日志：
+更新内容：
+ - 主界面翻新
+
+优化内容：
+ - 优化了代码逻辑
+ - 优化了动态背景不存在时的判断
+ - 优化了登录窗口对上次登录用户名的记忆
+ - 优化了每次启动时pygame和qfluentwidget的提示（限发行版）
+
+修复内容：
+ - 修复了一堆乱七八糟的东西，我也不记得了
+...等11个bug
+ """,
     10411: """
 
 1.4.11（2025/2/11）更新日志：
@@ -40,7 +55,7 @@ CLIENT_UPDATE_LOG = {
  - 修复了编译脚本出现诡异错误的问题
  - 修复了没填写作业规则显示异常的问题
  - 修复了考勤记录页面切换状态问题重叠的问题
- - ...等6个bug
+...等6个bug
 
 但是话说回来，我是不是几百年没写更新日志了
 
@@ -312,7 +327,7 @@ bug修复：
  - 然后我自己都不记得更新了什么
  
 bug修复：
- - 修复了多用户的接口（9狂喜）
+ - 修复了多用户的接口（NCW狂喜）
  - 修复了撤回点评时历史最低分不能恢复的bug
  - 修复部分新版本加载老版本存档爆掉的问题
  - 修复了我精神状态过于正常的bug

@@ -5,9 +5,9 @@ from PySide6.QtCore    import QPoint, QTimer, Slot
 from PySide6.QtWidgets import QPushButton, QGraphicsOpacityEffect, QWidget, QMessageBox
 from PySide6.QtWidgets import QListWidget, QMainWindow, QVBoxLayout, QListWidgetItem
 from PySide6.QtWidgets import QMainWindow, QLabel
-from utils.base        import Student, Group
 from typing            import Union, Tuple, Optional, Callable, List
-from utils.base        import Base, Thread
+from utils.classdatatypes import Base, Thread
+from utils.classdatatypes import Student, Group
 from utils.settings    import SettingsInfo
 from utils.functions   import play_sound
 

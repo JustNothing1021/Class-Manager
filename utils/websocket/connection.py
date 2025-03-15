@@ -15,7 +15,7 @@ from threading import Thread
 import traceback
 from rich.console import Console
 import ipaddress
-from utils.base import Base
+from utils.basetypes import Base
 
 console = Console()
 

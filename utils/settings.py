@@ -3,7 +3,7 @@ import pickle
 import os
 import dill as pickle
 from types import MethodType, FunctionType
-from utils.base import Base
+from utils.basetypes import Base
 from utils.update_check import CLIENT_VERSION, CLIENT_VERSION_CODE
 
 class SettingsInfo:
@@ -41,11 +41,11 @@ class SettingsInfo:
             self.score_down_flash_framelength_step = 100
             self.score_down_flash_framelength_max = 2000
 
-            self.log_keep_linecount = 100
+            self.log_keep_linecount = 150
             self.log_update_interval = 0.1
 
-            self.auto_save_enabled = False
-            self.auto_save_interval = 120
+            self.auto_save_enabled = True
+            self.auto_save_interval = 300
             self.auto_save_path:Literal["folder", "user"] = "folder"
             self.auto_backup_scheme:Literal["none", "only_data", "all"] = "none"
 

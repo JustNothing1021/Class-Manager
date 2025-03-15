@@ -14,6 +14,7 @@ pyinstaller main.py ^
   --add-data "utils;utils" ^
   --add-data "LICENSE;." ^
   --add-data "src;src" ^
+  --add-data "version;." ^
   --hidden-import PyQt6.QtWebEngine ^
   --exclude-module PyQt5 ^
   --exclude-module PyQt6 ^
