@@ -2,6 +2,7 @@ import sys
 import os
 import traceback
 import base64
+import signal
 try:
     from src.core import stderr_orig, stdout_orig, Base
 except ImportError as e:
@@ -202,10 +203,12 @@ def login():
     btn_login.grid(row=3, column=1, padx=(0,40), pady=(10,0))
     btn_sign_up = ctk.CTkButton(window, text='注册', width=4, command=usr_sign_up)
     btn_sign_up.grid(row=3, column=2, padx=(10,0), pady=(10,0))
-    # def passed():
-    #     Base.log("I", "用户已退出", "login.passed")
-    #     os._exit(0)
-    # window.protocol("WM_DELETE_WINDOW", passed)
+    def passed():
+        Base.log("I", "用户已退出", "login.passed")
+        os.kill(os.getpid(), signal.SIGTERM)
+        sys.exit(0)
+
+    window.protocol("WM_DELETE_WINDOW", passed)
     # 第10步，主窗口循环显示
     window.mainloop()
     if aaaaa > 0.6:
