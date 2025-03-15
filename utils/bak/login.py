@@ -4,7 +4,7 @@ import traceback
 import base64
 try:
     from src.core import stderr_orig, stdout_orig, Base
-except Exception as e:
+except ImportError as e:
     print(traceback.format_exc())
     from core import stderr_orig, stdout_orig, Base
     

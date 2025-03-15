@@ -47,3 +47,6 @@ colorama           >= 0.4.6
 customtkinter      == 5.2.2
 # 我（JustNothing）同学（NoneColdWind）用这个写的登陆界面
 # （登陆界面可以自定义，所以可选）
+
+loguru             == 0.7.3
+# 用来记录日志

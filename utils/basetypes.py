@@ -48,6 +48,10 @@ from abc import ABC, abstractmethod
 import random
 
 
+from loguru import logger
+
+
+
 
 os.makedirs(os.getcwd() + "/log", exist_ok=True)
 
@@ -59,9 +63,6 @@ bs = "\\"
 debug = True
 "是否为调试模式"
 
-LOG_FILE_PATH = os.getcwd() + "/log/log_{}.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-LOG_FILE_PATH = LOG_FILE_PATH.replace("/" if platform.platform() == "Windows"  else "\\", "\\" if platform.platform() == "Windows" else "/")
-"日志文件名"
 
 function = type(lambda: None)
 "函数类型"
@@ -77,8 +78,8 @@ def utc(prec: int = 3):
 
 if sys.stdout is None:
     if sys.__stdout__ is None:
-        sys.stdout = open(os.getcwd() + "/log/log_{}_stdout.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")), "w", encoding="utf-8")
-        sys.stderr = open(os.getcwd() + "/log/log_{}_stderr.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")), "w", encoding="utf-8")
+        sys.stdout = open(os.path.join(os.getcwd(), "stdout"), "w", encoding="utf-8")
+        sys.stderr = open(os.path.join(os.getcwd(), "stderr"), "w", encoding="utf-8")
         sys.__stdout__ = sys.stdout
         sys.__stderr__ = sys.stderr
     else:
@@ -118,7 +119,7 @@ def format_exc_like_java(exc: Exception) -> List[str]:
     while tb is not None:
         frame = tb.tb_frame
         filename = frame.f_code.co_filename
-        filename_strip = os.path.basename(filename)
+        filename_strip = (filename)
         lineno = tb.tb_lineno
         funcname = frame.f_code.co_name
         _locals = frame.f_locals.copy()
@@ -393,6 +394,9 @@ uint32 = unsigned_integer = cinttype(c_uint32, "unsigned_integer")
 uint64 = unsigned_qword   = cinttype(c_uint64, "unsigned_qword")
 
 
+    
+
+
 
 
 def get_function_module(func: Union[object, Callable]) -> str:
@@ -404,6 +408,24 @@ def get_function_module(func: Union[object, Callable]) -> str:
         module_name = module.__name__
     return module_name
 
+cwd = os.getcwd()
+"当前工作目录"
+
+bs = "\\"
+
+debug = True
+"是否为调试模式"
+
+LOG_FILE_PATH = os.getcwd() + "/log/log_{}.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+LOG_FILE_PATH = LOG_FILE_PATH.replace("/" if platform.platform() == "Windows"  else "\\", "\\" if platform.platform() == "Windows" else "/")
+"日志文件名"
+
+function = type(lambda: None)
+"函数类型"
+
+
+SOUND_BRUH = os.getcwd() + "/res/sounds/bruh.mp3"
+"bruh"
 
 class NULLPTR:
     "虽然没用"
@@ -604,7 +626,6 @@ class Color:
         "从RGB数值中生成颜色"
         return f"\033[38;2;{r};{g};{b}m"
 
-log_file = open(LOG_FILE_PATH, "a", buffering=1, encoding="utf-8")
 
 class Mutex:
     "一个简单的互斥锁"
@@ -716,19 +737,41 @@ def utc(precision:int=3):
     """
     return int(time.time() * pow(10, precision))
 
+# 初始化日志配置
+logger.remove()
+logger.add(
+    stdout_orig,            # 这样就不会重复读写了
+    format=\
+        "<light-cyan>{time:YYYY-MM-DD HH:mm:ss.SSS}</light-cyan> | <level>{level: <8}</level> | "
+        "<blue>{extra[file]: <15}</blue> | "
+        "<light-green>{extra[source]}:{extra[lineno]}</light-green> - <level>{message}</level>",
+    backtrace=True,
+    diagnose=True
+)
+logger.add(
+    f'log/ClassManager_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_{str(int((time.time() % 1) * 1000000)).zfill(6)}.log',
+    rotation=None,
+    retention='7 days',
+    encoding='utf-8',
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <7} | {extra[full_file]: <21} | {extra[source_with_lineno]: <35} | {message}",
+    backtrace=True,
+    diagnose=True
+)
+
+
+# 启用loguru的异常捕获
+logger.catch(onerror=lambda exc: Base.log_exc("logger捕获到异常", exc=exc))
 class Base(Object):
     "工具基层"
-    log_file = log_file
-    "日志文件"
     fast_log_file = open("log_buffered.txt", "a", buffering=1, encoding="utf-8")
     "临时日志文件（现在没用了）"
     stdout_orig = stdout_orig
     "标准输出"
     stderr_orig = stderr_orig
     "标准错误"
-    stdout = SystemLogger(sys.stdout, logger_name="sys.stdout", level="I", function=lambda l, m, s: Base.log(l, m, s))
+    captured_stdout = SystemLogger(sys.stdout, logger_name="sys.stdout", function=lambda m: Base.log("I", m, "sys.stdout"))
     "经过处理的输出"
-    stderr = SystemLogger(sys.stderr, logger_name="sys.stderr", level="E", function=lambda l, m, s: Base.log(l, m, s))
+    captured_stderr = SystemLogger(sys.stderr, logger_name="sys.stderr", function=lambda m: Base.log("E", m, "sys.stderr"))
     "经过处理的错误输出"
     window_log_queue = Queue()
     "主窗口显示日志的队列（每一个项目是一行的字符串）"
@@ -740,8 +783,6 @@ class Base(Object):
     "记录日志的互斥锁（现在没用了）"
     log_file_keepcount = 20
     "日志文件保留数量"
-    _writing = False
-    "没用的东西"
     thread_id = ctypes.CFUNCTYPE(ctypes.c_long) (lambda: ctypes.pythonapi.PyThread_get_thread_ident()) ()
     "当前进程的pid"
     thread_name = threading.current_thread().name
@@ -752,6 +793,12 @@ class Base(Object):
     "日志记录器是否在运行（我自己都不知道有没有用，忘了）"
     log_level:Literal["I", "W", "E", "F", "D", "C"] = "D"
     "日志记录器等级"
+    short_log_info: List[str] = []
+    "给主界面用的简短日志信息列表"
+    short_log_keep_length: int = 150
+    "日志信息保留的条数"
+    logged_count: int = 0
+    "自启动以来记录过的日志条数"
 
 
     @staticmethod
@@ -770,85 +817,68 @@ class Base(Object):
         return F"{lt.tm_year}-{lt.tm_mon:02}-{lt.tm_mday:02} {lt.tm_hour:02}:{lt.tm_min:02}:{lt.tm_sec:02}.{int((time.time()%1)*1000):03}"
 
     @staticmethod
-    def log(type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
+    def log(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
                 """
                 向控制台和日志输出信息
-
-                :param type: 类型
-                :param msg: 信息
-                :param send: 发送者
-                :return: None
+                :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
+                :param msg: 日志消息
+                :param source: 日志来源
                 """
                 # 如果日志等级太低就不记录
-                if (type == "D" and Base.log_level not in ("D"))                \
-                or (type == "I" and Base.log_level not in ("D", "I"))            \
-                or (type == "W" and Base.log_level not in ("D", "I", "W"))        \
-                or (type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
-                or (type == "F" or type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
+                if (msg_type == "D" and Base.log_level not in ("D"))                \
+                        or (msg_type == "I" and Base.log_level not in ("D", "I"))            \
+                        or (msg_type == "W" and Base.log_level not in ("D", "I", "W"))        \
+                        or (msg_type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
+                        or (msg_type == "F" or msg_type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
                     return
 
                 if not isinstance(msg, str):
                     msg = msg.__repr__()
                 for m in msg.splitlines():
-                    if type == "I":
-                        color = Color.GREEN
-                    elif type == "W":
-                        color = Color.YELLOW
-                    elif type == "E":
-                        color = Color.RED
-                    elif type == "F" or type == "C":
-                        color = Color.MAGENTA
-                    elif type == "D":
-                        color = Color.CYAN
-                    else:
-                        color = Color.WHITE
-                    
                     if not m.strip():
                         continue
                     frame = inspect.currentframe()
-                    lineno = frame.f_back.f_lineno
                     file = frame.f_back.f_code.co_filename.replace(cwd, "")
                     if file == "<string>":
                         lineno = 0
                     if file.startswith(("/", "\\")):
                         file = file[1:]
-                    t = Base.gettime()
-                    cm = f"{Color.BLUE}{t}{Color.END} {color}{type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
-                    lm = f"{t.split('.')[0].split(' ')[1]} {type} {m}" 
-                    lfm = f"{t} {type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
-                    Base.window_log_queue.put(lm)
-                    Base.console_log_queue.put(cm)
-                    # Base.logfile_log_queue.put(lfm)
-                    Base.log_file.write(lfm + "\n")
-                    # print(lfm, file=Base.fast_log_file)
-                    Base.log_file.flush()
+                    frame = inspect.currentframe()
+                    caller_frame = frame.f_back
+                    # caller_function = caller_frame.f_code.co_name
+                    # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
+                    # if not (caller_function == 'write' or caller_function == 'writelines'):
+                    log_level = {
+                        "I": "INFO",
+                        "W": "WARNING",
+                        "E": "ERROR",
+                        "F": "CRITICAL",
+                        "C": "CRITICAL",
+                        "D": "DEBUG"
+                    }.get(msg_type, "INFO")
+                    # 避免日志套娃，只在loguru中记录一次
 
-    @staticmethod
-    def log_thread_logfile():
-        "把日志写进日志文件的线程的运行函数"
-        while Base.logger_running:
-            s = Base.logfile_log_queue.get()
-            Base.log_file.write(s + "\n")
-            Base.log_file.flush()
+                    # 其实不需要考虑这些，只要一开始就给log写到原始输出而不是sys.stdout就行了
+                    filename = (caller_frame.f_code.co_filename)
+                    file_basename = os.path.basename(filename)
+                    # func_name = caller_frame.f_code.co_name
+                    lineno = caller_frame.f_lineno
+                    logger.bind(file=file_basename, 
+                                source=source, 
+                                lineno=lineno, 
+                                full_file=file, 
+                                source_with_lineno=f"{source}:{lineno}").log(log_level, m)
+                    short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
+                    Base.short_log_info.append(short_info)
+                    short_info = short_info[-Base.short_log_keep_length:]
+                    Base.logged_count += 1
 
 
-    @staticmethod
-    def log_thread_console():
-        "把日志写在终端的线程的运行函数"
-        while Base.logger_running:
-            s = Base.console_log_queue.get()
-            Base.stdout_orig.write(s + "\n")
-            Base.stdout_orig.flush()
 
     @staticmethod
     def stop_loggers():
         "停止所有日志记录器"
         Base.logger_running = False
-
-    console_log_thread = Thread(target=lambda: Base.log_thread_console(), daemon=True, name="ConsoleLogger")
-    "把日志写在终端的线程的线程对象"
-    logfile_log_thread = Thread(target=lambda: Base.log_thread_logfile(), daemon=True, name="FileLogger")
-    "把日志写进日志文件的线程的线程对象"
 
     from abc import abstractmethod
     abstract = abstractmethod
@@ -926,8 +956,6 @@ class Base(Object):
 
 
 
-Base.console_log_thread.start()
-Base.logfile_log_thread.start()
 
 class SupportsKeyOrdering(ABC):
     # 注：Supports是支持的意思（
@@ -1220,9 +1248,3 @@ class OrderedKeyList(list, Iterable[_Template]):
         "返回列表的表达式"
         return F"OrderedTemplateGroup({super().__repr__()})"
     
-
-
-new_stdout = Base.stdout
-new_stderr = Base.stderr
-3
-Base.clear_oldfile(Base.log_file_keepcount)

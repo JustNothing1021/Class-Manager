@@ -16,7 +16,7 @@ from typing import *
 from types import TracebackType, FrameType
 from utils.basetypes import OrderedKeyList, SupportsKeyOrdering
 from utils.basetypes import Object, Base, HighPrecision
-from utils.basetypes import int8, int16, int32, int64, inf, nan, log_file
+from utils.basetypes import int8, int16, int32, int64, inf, nan
 from utils.basetypes import sys, Stack, Thread, LOG_FILE_PATH, steprange
 from utils.update_check import VERSION_INFO, CLIENT_UPDATE_LOG
 from utils.functions import play_music, play_sound, stop_music
@@ -55,8 +55,8 @@ from .functions import addrof
 ctrlc_times = 0
 "按下ctrl+c的次数"
 
-sys.stdout = Base.stdout
-sys.stderr = Base.stderr
+sys.stdout = Base.captured_stdout
+sys.stderr = Base.captured_stderr
 
 
 def sigint_handler(sigval: Optional[int], frame: Optional[FrameType]):

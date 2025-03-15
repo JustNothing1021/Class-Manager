@@ -17,15 +17,14 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
     """一个用来重定向标准输出的类"""
 
     def __init__(self, *args, 
-                 logger_name:str = "sys.stdout", 
-                 level:Literal["I", "W", "E"]="I", 
+                 logger_name:str="sys.stdout",
                  function: Callable[[str, str, str], Any]=None,
-                   **kwargs):
+                 **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger_name = logger_name
         self.line = ""
-        self.level = level
         self.function = function
+        self.logger_name = logger_name
+
 
     def write(self, s:str):
         "也不知道为什么会有IndexError，所以pass掉了"
@@ -36,7 +35,7 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
                 # 如果有function函数，则调用它记录日志，但不再将日志放入队列
                 # 这样可以避免重复输出
                 if self.function:
-                    self.function(self.level, log_content, self.logger_name)
+                    self.function(log_content)
                 # 如果没有function函数，则将日志放入队列
                 else:
                     # 根据日志类型将日志放入对应队列

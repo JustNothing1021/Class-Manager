@@ -58,8 +58,6 @@ class SettingsInfo:
             self.max_framerate = 60
             return self
 
-        # TODO: 修复保存和加载不正常的bug
-
         def save_to(self, file_path:str) -> "SettingsInfo":
             "保存设置"
             Base.log("I", f"保存设置到{file_path}", "SettingsInfo.save_to")

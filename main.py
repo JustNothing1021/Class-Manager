@@ -43,8 +43,7 @@ from   utils.classobjects import (sys as base_sys, Class, Student, Achievement, 
                                 ScoreModification, ScoreModificationTemplate, StrippedStudent, Day,
                                 AttendanceInfo, DayRecord, ClassStatusObserver, AchievementStatusObserver,
                                 Group, HomeworkRule, DummyStudent, History, Stack, Base, ClassObj,
-                                DEFAULT_CLASSES, DEFAULT_ACHIEVEMENTS,
-                                DEFAULT_SCORE_TEMPLATES, DEFAULT_USER, log_file)
+                                DEFAULT_CLASSES, DEFAULT_ACHIEVEMENTS, DEFAULT_SCORE_TEMPLATES, DEFAULT_USER)
 from   utils.classobjects  import (steprange, play_sound, play_music, stop_music, Thread, default_class_key)
 from   utils.classobjects  import (CORE_VERSION, CORE_VERSION_CODE, VERSION_INFO, CLIENT_UPDATE_LOG)
 from   utils.consts        import app_style, app_stylesheet, nl
@@ -63,13 +62,13 @@ CLIENT_VERSION_CODE: str          = VERSION_INFO["client_version_code"]
 "客户端界面版本号"
 settings:            SettingsInfo = SettingsInfo.current
 "当前设置"
-sys.stdout                        = Base.stdout   # SystemLogger
+sys.stdout                        = Base.captured_stdout   # SystemLogger
 "标准输出（定向到系统，会通过日志重定向到终端）"
-sys.stderr                        = Base.stderr   # SystemLogger
+sys.stderr                        = Base.captured_stderr   # SystemLogger
 "错误输出"
-base_sys.stdout                   = Base.stdout   # SystemLogger
+base_sys.stdout                   = Base.captured_stdout   # SystemLogger
 "来自核心的标准输出"
-base_sys.stderr                   = Base.stderr   # SystemLogger
+base_sys.stderr                   = Base.captured_stderr   # SystemLogger
 "来自核心的错误输出"
 log_queue:            Queue       = Base.window_log_queue
 "日志队列（给主界面的日志窗口用的）"
@@ -616,6 +615,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         "动态背景帧率"
         self.video_framerate_update_time = 0
         "动态背景帧数更新时间"
+        self.displayed_on_the_log_window = 0
+        "在小日志窗口上已经体现的日志条数，用来判断是否刷新"
         if self.auto_save_enabled:
             Thread(target=lambda: self.auto_save(timeout=int(self.auto_save_interval)), name="AutoSave", daemon=True).start()
         Thread(target=self.insert_action_thread, name="InsertOpreationHandler", daemon=True).start()
@@ -981,14 +982,10 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     @Slot()
     def refresh_logwindow(self):
         """刷新日志窗口"""
-        new = self.window_log_queue.qsize()
-        while self.window_log_queue.qsize() > 0:
-            self.logwindow_content.append(self.window_log_queue.get())
-            if len(self.logwindow_content) > self.log_keep_linecount:
-                self.logwindow_content.pop(0)
-        if new:
-            self.textBrowser.setText(nl.join(self.logwindow_content))
+        if self.logged_count != self.displayed_on_the_log_window:
+            self.textBrowser.setText(nl.join(self.short_log_info))
             self.textBrowser.verticalScrollBar().setValue(self.textBrowser.verticalScrollBar().maximum())
+            self.displayed_on_the_log_window = self.logged_count
 
 
     def read_video(self):
