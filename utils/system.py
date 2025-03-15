@@ -32,16 +32,18 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
         self.line += s
         if "\n" in self.line:
             try:
-
-                self.function(self.level, self.line.rsplit("\n", 1)[0].strip(), self.logger_name)
-                if self.logger_name == "sys.stdout":
-                    stdout_queue.put(self.line.rsplit("\n", 1)[0].strip())
-                    output_list.append(self.line.rsplit("\n", 1)[0].strip())
-                elif self.logger_name == "sys.stderr":
-                    stderr_queue.put(self.line.rsplit("\n", 1)[0].strip())
-                    output_list.append(self.line.rsplit("\n", 1)[0].strip())
-
-                stdout_queue.put(self.line.rsplit("\n", 1)[0].strip())
+                log_content = self.line.rsplit("\n", 1)[0].strip()
+                # 如果有function函数，则调用它记录日志，但不再将日志放入队列
+                # 这样可以避免重复输出
+                if self.function:
+                    self.function(self.level, log_content, self.logger_name)
+                # 如果没有function函数，则将日志放入队列
+                else:
+                    # 根据日志类型将日志放入对应队列
+                    if self.logger_name == "sys.stdout":
+                        stdout_queue.put(log_content)
+                    elif self.logger_name == "sys.stderr":
+                        stderr_queue.put(log_content)
                 self.line = self.line.rsplit("\n", 1)[1]
             except IndexError:
                 pass
@@ -52,7 +54,20 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
         try:
             self.line += "\n".join(lines)
             if "\n" in self.line:
-                self.function(self.level, self.line.rsplit("\n", 1)[0].strip(), self.logger_name)
+                log_content = self.line.rsplit("\n", 1)[0].strip()
+                # 如果有function函数，则调用它记录日志，但不再将日志放入队列
+                # 这样可以避免重复输出
+                if self.function:
+                    self.function(self.level, log_content, self.logger_name)
+                # 如果没有function函数，则将日志放入队列
+                else:
+                    # 根据日志类型将日志放入队列
+                    if self.logger_name == "sys.stdout":
+                        stdout_queue.put(log_content)
+                        output_list.append(log_content)
+                    elif self.logger_name == "sys.stderr":
+                        stderr_queue.put(log_content)
+                        output_list.append(log_content)
                 self.line = self.line.rsplit("\n", 1)[1]
             return len(lines)
         except IndexError:

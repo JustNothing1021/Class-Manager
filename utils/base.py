@@ -18,13 +18,12 @@ import datetime
 import copy
 import math
 import pickle
-import dill as pickle
+import dill
 import inspect
 from queue import Queue
 import platform
 from typing_extensions import Iterable, Mapping
 import inspect
-from typing import Callable
 
 try:
     from utils.system import system, SystemLogger
@@ -43,15 +42,28 @@ os.makedirs(os.getcwd() + "/log", exist_ok=True)
 def utc(prec: int = 3):
     "获取当前UTC时间"
     return int(time.time() * (10 ** prec))
-if sys.stdout is None:
-    if sys.__stdout__ is None:
-        sys.stdout = open(os.getcwd() + "/log/log_{}_stdout.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")), "w", encoding="utf-8")
-        sys.stderr = open(os.getcwd() + "/log/log_{}_stderr.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")), "w", encoding="utf-8")
-        sys.__stdout__ = sys.stdout
-        sys.__stderr__ = sys.stderr
-    else:
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
+from loguru import logger
+
+# 初始化日志配置
+logger.remove()
+logger.add(
+    sys.stderr,
+    format="<light-cyan>{time:YYYY-MM-DD HH:mm:ss.SSS}</light-cyan> | <level>{level: <8}</level> | <blue>{extra[file]: <8}</blue> | <cyan>{extra[source]}</cyan>:<cyan>{extra[lineno]}</cyan> - <level>{message}</level>",
+    backtrace=True,
+    diagnose=True
+)
+logger.add(
+    lambda _: f'log/ClassManager_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_{str(int((time.time() % 1) * 1000000)).zfill(6)}.log',
+    rotation=None,
+    retention='7 days',
+    encoding='utf-8',
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <7} | {extra[file]: <8} | {extra[lineno]}:{extra[source]} - {message}",
+    backtrace=True,
+    diagnose=True
+)
+
+# 启用loguru的异常捕获
+logger.catch(onerror=lambda _: sys.exit(1))
 
 
 def get_function_namespace(func) -> str:
@@ -86,7 +98,7 @@ def format_exc_like_java(exc: Exception) -> List[str]:
     while tb is not None:
         frame = tb.tb_frame
         filename = frame.f_code.co_filename
-        filename_strip = os.path.basename(filename)
+        filename_strip = (filename)
         lineno = tb.tb_lineno
         funcname = frame.f_code.co_name
         _locals = frame.f_locals.copy()
@@ -762,18 +774,16 @@ class Base(Object):
     def log(type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
                 """
                 向控制台和日志输出信息
-
-                :param type: 类型
-                :param msg: 信息
-                :param send: 发送者
-                :return: None
+                :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
+                :param msg: 日志消息
+                :param source: 日志来源
                 """
                 # 如果日志等级太低就不记录
                 if (type == "D" and Base.log_level not in ("D"))                \
-                or (type == "I" and Base.log_level not in ("D", "I"))            \
-                or (type == "W" and Base.log_level not in ("D", "I", "W"))        \
-                or (type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
-                or (type == "F" or type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
+                        or (type == "I" and Base.log_level not in ("D", "I"))            \
+                        or (type == "W" and Base.log_level not in ("D", "I", "W"))        \
+                        or (type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
+                        or (type == "F" or type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
                     return
 
                 if not isinstance(msg, str):
@@ -795,49 +805,43 @@ class Base(Object):
                     if not m.strip():
                         continue
                     frame = inspect.currentframe()
+                    caller_frame = frame.f_back
                     lineno = frame.f_back.f_lineno
+                    func_name = caller_frame.f_code.co_name
                     file = frame.f_back.f_code.co_filename.replace(cwd, "")
+                    file = os.path.basename(file)
                     if file == "<string>":
                         lineno = 0
                     if file.startswith(("/", "\\")):
                         file = file[1:]
                     t = Base.gettime()
                     cm = f"{Color.BLUE}{t}{Color.END} {color}{type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
-                    lm = f"{t.split('.')[0].split(' ')[1]} {type} {m}" 
-                    lfm = f"{t} {type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
-                    Base.window_log_queue.put(lm)
-                    Base.console_log_queue.put(cm)
-                    # Base.logfile_log_queue.put(lfm)
-                    Base.log_file.write(lfm + "\n")
-                    # print(lfm, file=Base.fast_log_file)
-                    Base.log_file.flush()
+                    frame = inspect.currentframe()
+                    caller_frame = frame.f_back
+                    caller_function = caller_frame.f_code.co_name
+                    # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
+                    if not (caller_function == 'write' or caller_function == 'writelines'):
+                        log_level = {
+                            "I": "INFO",
+                            "W": "WARNING",
+                            "E": "ERROR",
+                            "F": "CRITICAL",
+                            "C": "CRITICAL",
+                            "D": "DEBUG"
+                        }.get(type, "INFO")
+                        # 避免日志套娃，只在loguru中记录一次
+                        filename = (caller_frame.f_code.co_filename)
+                        file_basename = os.path.basename(filename)
+                        func_name = caller_frame.f_code.co_name
+                        lineno = caller_frame.f_lineno
+                        logger.bind(file=file_basename, source=source, lineno=lineno).log(log_level, m)
 
-    @staticmethod
-    def log_thread_logfile():
-        "把日志写进日志文件的线程的运行函数"
-        while Base.logger_running:
-            s = Base.logfile_log_queue.get()
-            Base.log_file.write(s + "\n")
-            Base.log_file.flush()
 
-
-    @staticmethod
-    def log_thread_console():
-        "把日志写在终端的线程的运行函数"
-        while Base.logger_running:
-            s = Base.console_log_queue.get()
-            Base.stdout_orig.write(s + "\n")
-            Base.stdout_orig.flush()
 
     @staticmethod
     def stop_loggers():
         "停止所有日志记录器"
         Base.logger_running = False
-
-    console_log_thread = Thread(target=lambda: Base.log_thread_console(), daemon=True, name="ConsoleLogger")
-    "把日志写在终端的线程的线程对象"
-    logfile_log_thread = Thread(target=lambda: Base.log_thread_logfile(), daemon=True, name="FileLogger")
-    "把日志写进日志文件的线程的线程对象"
 
     from abc import abstractmethod
     abstract = abstractmethod
@@ -915,8 +919,6 @@ class Base(Object):
 
 
 
-Base.console_log_thread.start()
-Base.logfile_log_thread.start()
 
 class SupportsKeyOrdering(ABC):
     # 注：Supports是支持的意思（
@@ -2375,8 +2377,8 @@ class ClassDataObj(Base):
                             return False
                     except:
                         Base.log_exc(f"位于成就{self.name}({self.key})的lambda函数出错：", "AchievementTemplate.achieved")
-                        if self.key in class_obs.base.DEFAULT_ACHIEVEMENTS:
-                            self.other = class_obs.base.DEFAULT_ACHIEVEMENTS[self.key].other
+                        if self.key in class_obs.DEFAULT_ACHIEVEMENTS:
+                            self.other = class_obs.DEFAULT_ACHIEVEMENTS[self.key].other
                             Base.log("I", "已经重置为默认值", "AchievementTemplate.achieved")
                         else:
                             raise ClassDataObj.ObserverError(F"位于成就{self.name}({self.key})的lambda函数出错")
@@ -2690,7 +2692,22 @@ class ClassObj: ...
 
 class ClassStatusObserver(Object):
     "班级状态侦测器"
-    on_active:                 bool
+    def __init__(self):
+        self.on_active = False
+        self.student_count = 0
+        self.student_total_score = 0.0
+        self.class_id = ""
+        self.stu_score_ord = {}
+        self.classes = {}
+        self.target_class = None
+        self.templates = {}
+        self.opreation_record = Stack()
+        self.groups = {}
+        self.base = None
+        self.last_update = 0.0
+        self.tps = 60
+        self.rank_non_dumplicate = []
+        self.rank_dumplicate = []
     "是否激活"
     student_count:             int
     "学生人数"

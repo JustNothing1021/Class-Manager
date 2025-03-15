@@ -1,5 +1,5 @@
-::coding: gb2312
-::?????,,,
+::coding: gb2312_CRLF
+::Tip: please use "CRLF" instead of "LF"
 @echo off
 chcp 936 >nul
 cd /d "%~dp0"
