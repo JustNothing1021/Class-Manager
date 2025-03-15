@@ -53,7 +53,7 @@ logger.add(
     diagnose=True
 )
 logger.add(
-    lambda _: f'log/ClassManager_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_{str(int((time.time() % 1) * 1000000)).zfill(6)}.log',
+    f'log/ClassManager_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_{str(int((time.time() % 1) * 1000000)).zfill(6)}.log',
     rotation=None,
     retention='7 days',
     encoding='utf-8',
@@ -395,7 +395,7 @@ bs = "\\"
 debug = True
 "是否为调试模式"
 
-LOG_FILE_PATH = os.getcwd() + "/log/log_{}.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+LOG_FILE_PATH = os.getcwd() + "/log/ClassManager_log_{}.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 LOG_FILE_PATH = LOG_FILE_PATH.replace("/" if platform.platform() == "Windows"  else "\\", "\\" if platform.platform() == "Windows" else "/")
 "日志文件名"
 
