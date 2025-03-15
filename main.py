@@ -82,6 +82,8 @@ ctrlc_times = 0
 
 def exception_handler(exc_type: Type[BaseException], exc_value: BaseException, exc_tb: TracebackType):
     """捕获异常并弹出错误框（给sys.excepthook用的）"""
+    from utils.base import logger
+    logger.exception("Uncaught exception occurred", exc_info=exc_value)
     Base.log_exc("捕获到异常", "exception_handler", exc=exc_value)
     pagesize = 20
     exc_info = ["捕获到异常！\n"] + traceback.format_exception(exc_type, exc_value, exc_tb) + ["哇，我的程序果然没让我失望\n"]
@@ -95,6 +97,7 @@ def exception_handler(exc_type: Type[BaseException], exc_value: BaseException, e
         for i in range(total):
             currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
             QMessageBox.critical(parent, "错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
+    sys.exit(1)
     
 
 sys.excepthook       = exception_handler

@@ -1,5 +1,8 @@
-::coding: gb2312
-::?????,,,
+::coding: gb2312_CRLF
+::Tip: please use "CRLF" instead of "LF"
+
+:: It used to be, but git usually changes it to LF
+
 @echo off
 chcp 936 >nul
 cd /d "%~dp0"

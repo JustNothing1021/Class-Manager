@@ -41,7 +41,9 @@ class SettingsInfo:
             self.score_down_flash_framelength_step = 100
             self.score_down_flash_framelength_max = 2000
 
-            self.log_keep_linecount = 150
+            self.log_file_path = 'class_manager.log'
+            self.log_format = '{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {module}:{function}:{line} - {message}'
+            self.log_keep_linecount = 100
             self.log_update_interval = 0.1
 
             self.auto_save_enabled = True
