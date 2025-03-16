@@ -17,7 +17,7 @@ from types import TracebackType, FrameType
 from utils.basetypes import OrderedKeyList, SupportsKeyOrdering
 from utils.basetypes import Object, Base, HighPrecision
 from utils.basetypes import int8, int16, int32, int64, inf, nan
-from utils.basetypes import sys, Stack, Thread, LOG_FILE_PATH, steprange
+from utils.basetypes import sys, Stack, Thread, steprange
 from utils.update_check import VERSION_INFO, CLIENT_UPDATE_LOG
 from utils.functions import play_music, play_sound, stop_music
 from utils.classdatatypes import (Student, DummyStudent, StrippedStudent,

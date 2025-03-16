@@ -36,13 +36,13 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
                 # 这样可以避免重复输出
                 if self.function:
                     self.function(log_content)
-                # 如果没有function函数，则将日志放入队列
-                else:
-                    # 根据日志类型将日志放入对应队列
-                    if self.logger_name == "sys.stdout":
-                        stdout_queue.put(log_content)
-                    elif self.logger_name == "sys.stderr":
-                        stderr_queue.put(log_content)
+                # 根据日志类型将日志放入对应队列
+                # 不需要根据function判断是否放进队列，这两个不会冲突的
+                if self.logger_name == "sys.stdout":
+                    stdout_queue.put(log_content)
+                elif self.logger_name == "sys.stderr":
+                    stderr_queue.put(log_content)
+                output_list.append(log_content)
                 self.line = self.line.rsplit("\n", 1)[1]
             except IndexError:
                 pass

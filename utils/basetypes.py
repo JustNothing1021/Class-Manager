@@ -416,9 +416,7 @@ bs = "\\"
 debug = True
 "是否为调试模式"
 
-LOG_FILE_PATH = os.getcwd() + "/log/log_{}.log".format(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
-LOG_FILE_PATH = LOG_FILE_PATH.replace("/" if platform.platform() == "Windows"  else "\\", "\\" if platform.platform() == "Windows" else "/")
-"日志文件名"
+
 
 function = type(lambda: None)
 "函数类型"
@@ -753,7 +751,7 @@ logger.add(
     rotation=None,
     retention='7 days',
     encoding='utf-8',
-    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <7} | {extra[full_file]: <21} | {extra[source_with_lineno]: <35} | {message}",
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[full_file]: <23} | {extra[source_with_lineno]: <35} | {message}",
     backtrace=True,
     diagnose=True
 )
@@ -781,8 +779,8 @@ class Base(Object):
     "日志文件日志队列"
     log_mutex = Mutex()
     "记录日志的互斥锁（现在没用了）"
-    log_file_keepcount = 20
-    "日志文件保留数量"
+    # log_file_keepcount = 20
+    # "日志文件保留数量"
     thread_id = ctypes.CFUNCTYPE(ctypes.c_long) (lambda: ctypes.pythonapi.PyThread_get_thread_ident()) ()
     "当前进程的pid"
     thread_name = threading.current_thread().name
@@ -884,15 +882,15 @@ class Base(Object):
     abstract = abstractmethod
     "抽象方法"
 
-    @staticmethod
-    def clear_oldfile(keep_count:int=10):
-        "清理日志文件"
-        if not os.path.exists(LOG_FILE_PATH):
-            return
-        log_files = sorted([f for f in os.listdir(os.path.dirname(LOG_FILE_PATH)) if f.startswith("log_") and f.endswith(".log")], reverse=True)
-        if len(log_files) > keep_count:
-            for f in log_files[keep_count:]:
-                os.remove(os.path.join(os.path.dirname(LOG_FILE_PATH), f))
+    # @staticmethod
+    # def clear_oldfile(keep_count:int=10):
+    #     "清理日志文件"
+    #     if not os.path.exists(LOG_FILE_PATH):
+    #         return
+    #     log_files = sorted([f for f in os.listdir(os.path.dirname(LOG_FILE_PATH)) if f.startswith("log_") and f.endswith(".log")], reverse=True)
+    #     if len(log_files) > keep_count:
+    #         for f in log_files[keep_count:]:
+    #             os.remove(os.path.join(os.path.dirname(LOG_FILE_PATH), f))
     
     @staticmethod
     def read_ini(filepath:str="options.ini",encoding="utf-8",nospace:bool=True) -> Union[int,Dict[str,Union[bool,str]]]:

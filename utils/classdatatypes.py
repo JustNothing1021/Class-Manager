@@ -1534,9 +1534,9 @@ class AchievementStatusObserver(Object):
     tps:                        int
     "最大每秒更新次数"
 
-stdout = sys.stdout
-stderr = sys.stderr
-Base.clear_oldfile(Base.log_file_keepcount)
+# stdout = sys.stdout
+# stderr = sys.stderr
+# Base.clear_oldfile(Base.log_file_keepcount)
 
 Student = ClassObj.Student
 DummyStudent = ClassObj.DummyStudent
