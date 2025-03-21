@@ -151,28 +151,35 @@ def question_yes_no(master:Optional[QWidget],
     Base.log("I", f"询问框：{repr(title)} - {repr(text)}，default={repr(default)}，type={repr(type)}，pixmap={repr(pixmap)}")
     return question_yes_no_orig(master, title, text, default, type, pixmap)
 
+def handle_fatal_qt_error(msg: str):
+    """处理Qt致命错误的函数"""
+    Base.log("F", "哇，pyside6爆掉了", "MainThread")
+    widget.save_current_settings()
+    widget.save_data()
+    widget.critical("趋势", f"PySide6爆掉了！\n它的遗言：\n {msg}\n晚安，玛卡巴卡")
+    widget.closeEvent(QCloseEvent(), do_tip=False)
+    widget.destroy()
+    Base.log("F", "程序退出", "MainThread")
+    sys.exit(0)
+
 def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
-    """自定义的异常消息处理函数"""
-    if mode == QtMsgType.QtDebugMsg:
-        Base.log("D", msg, "PySide6")
-    elif mode == QtMsgType.QtInfoMsg:
-        Base.log("I", msg, "PySide6")
-    elif mode == QtMsgType.QtWarningMsg:
-        Base.log("W", msg, "PySide6")
-    elif mode == QtMsgType.QtCriticalMsg:
-        Base.log("C", msg, "PySide6")
-    elif mode == QtMsgType.QtFatalMsg:
-        Base.log("F", msg, "PySide6")
-        Base.log("F", "哇，pyside6爆掉了", "MainThread")
-        widget.save_current_settings()
-        widget.save_data()
-        widget.critical("趋势", f"PySide6爆掉了！\n它的遗言：\n {msg}\n晚安，玛卡巴卡")
-        widget.closeEvent(QCloseEvent(), do_tip=False)
-        widget.destroy()
-        Base.log("F", "程序退出", "MainThread")
-        sys.exit(0)
-    else:
-        Base.log("I", msg, "PySide6")
+    """自定义的异常消息处理函数 - 使用字典映射优化"""
+    # 使用字典映射消息类型到日志级别
+    msg_type_map = {
+        QtMsgType.QtDebugMsg: "D",
+        QtMsgType.QtInfoMsg: "I",
+        QtMsgType.QtWarningMsg: "W",
+        QtMsgType.QtCriticalMsg: "C",
+        QtMsgType.QtFatalMsg: "F"
+    }
+    
+    # 记录日志
+    log_level = msg_type_map.get(mode, "I")  # 默认为Info级别
+    Base.log(log_level, msg, "PySide6")
+    
+    # 处理致命错误
+    if mode == QtMsgType.QtFatalMsg:
+        handle_fatal_qt_error(msg)
 
 qInstallMessageHandler(qt_messagehandler)
 QLoggingCategory.setFilterRules("*.*=true\n*.debug=false\n*.info=false")
@@ -291,37 +298,55 @@ class MyWidget(QWidget):
             super().setFixedSize(*args, **kwargs)
 
 
+    def create_animation(self, property_name, duration, start_value, end_value, easing_curve=QEasingCurve.Type.OutCubic):
+        """创建通用动画
+        
+        Args:
+            property_name: 要动画的属性名
+            duration: 动画持续时间
+            start_value: 起始值
+            end_value: 结束值
+            easing_curve: 缓动曲线类型
+            
+        Returns:
+            创建的动画对象
+        """
+        animation = QPropertyAnimation(self, property_name)
+        animation.setEasingCurve(easing_curve)
+        animation.setDuration(duration / widget.animation_speed if widget.animation_speed > 0 else duration)
+        animation.setStartValue(start_value)
+        animation.setEndValue(end_value)
+        return animation
+        
     def showStartAnimation(self):
         "启动动画"
         self.is_running = True
         if widget.animation_speed <= 114514:
-            self.startanimation = QPropertyAnimation(self, b"pos")  
-            self.startanimation.setEasingCurve(QEasingCurve.Type.OutCubic)
-            self.startanimation.setDuration(400 / widget.animation_speed)
+            # 计算动画终点位置
             endpoint = (
                 self.master.geometry().topLeft() 
-
                 + QPoint(
                     self.master.geometry().width() / 2, 
                     self.master.geometry().height() / 2
                 )
-                
                 - QPoint(self.geometry().width() / 2, self.geometry().height() / 2)
-
                 + QPoint(widget.subwindow_x_offset, widget.subwindow_y_offset)
-
             )
             
+            # 计算动画起点位置
             startpoint = QPoint(
-
                 endpoint.x(), 
-
-                  QGuiApplication.primaryScreen().availableGeometry().height() 
+                QGuiApplication.primaryScreen().availableGeometry().height() 
                 + QGuiApplication.primaryScreen().availableGeometry().top()
-
             )
-            self.startanimation.setEndValue(endpoint)
-            self.startanimation.setStartValue(startpoint)
+            
+            # 使用通用动画创建方法
+            self.startanimation = self.create_animation(
+                b"pos",
+                400,
+                startpoint,
+                endpoint
+            )
             self.startanimation.start()
 
     def showCloseAnimation(self):
@@ -329,28 +354,42 @@ class MyWidget(QWidget):
         self.is_running = False
         super().show()
         if widget.animation_speed <= 114514:
-            self.closeanimation = QPropertyAnimation(self, b"pos")
-            self.closeanimation.setEasingCurve(QEasingCurve.Type.OutQuad)
-            self.closeanimation.setDuration(150 / widget.animation_speed)
+            # 第一阶段动画：向上移动
             startpoint = QPoint(self.x(), self.y())
             endpoint = QPoint(startpoint.x(), self.y() - 75)
-            self.closeanimation.setEndValue(endpoint)
-            self.closeanimation.setStartValue(startpoint)
+            
+            # 使用通用动画创建方法
+            self.closeanimation = self.create_animation(
+                b"pos",
+                150,
+                startpoint,
+                endpoint,
+                QEasingCurve.Type.OutQuad
+            )
             self.closeanimation.start()
+            
+            # 等待第一阶段动画完成
             while self.closeanimation.state() != QAbstractAnimation.State.Stopped:
                 QCoreApplication.processEvents()
-            self.closeanimation = QPropertyAnimation(self, b"pos")
-            self.closeanimation.setEasingCurve(QEasingCurve.Type.InQuad)
-            self.closeanimation.setDuration(230 / widget.animation_speed)
+            
+            # 第二阶段动画：移出屏幕
             startpoint = QPoint(self.x(), self.y())
             endpoint = QPoint(
                 startpoint.x(),
-                  QGuiApplication.primaryScreen().availableGeometry().top() 
+                QGuiApplication.primaryScreen().availableGeometry().top() 
                 + QGuiApplication.primaryScreen().availableGeometry().height()
             )
-            self.closeanimation.setEndValue(endpoint)
-            self.closeanimation.setStartValue(startpoint)
+            # 使用通用动画创建方法
+            self.closeanimation = self.create_animation(
+                b"pos",
+                230,
+                startpoint,
+                endpoint,
+                QEasingCurve.Type.InQuad
+            )
             self.closeanimation.start()
+            
+            # 等待第二阶段动画完成
             while self.closeanimation.state() != QAbstractAnimation.State.Stopped:
                 QCoreApplication.processEvents()
             self.hide()
@@ -3058,11 +3097,30 @@ class ListView(MyWidget):
             except BaseException:
                 pass
 
+    def create_animation(self, property_name, duration, start_value, end_value, easing_curve=QEasingCurve.Type.OutCubic):
+        """创建通用动画
+        
+        Args:
+            property_name: 要动画的属性名
+            duration: 动画持续时间
+            start_value: 起始值
+            end_value: 结束值
+            easing_curve: 缓动曲线类型
+            
+        Returns:
+            创建的动画对象
+        """
+        animation = QPropertyAnimation(self, property_name)
+        animation.setEasingCurve(easing_curve)
+        animation.setDuration(duration / widget.animation_speed if widget.animation_speed > 0 else duration)
+        animation.setStartValue(start_value)
+        animation.setEndValue(end_value)
+        return animation
+        
     def showStartAnimation(self):
         Base.log("D", "开始启动动画（阶段1）", "ListView.showStartAnimation")
-        self.startanimation_1 = QPropertyAnimation(self, b"pos")  
-        self.startanimation_1.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.startanimation_1.setDuration(400 / widget.animation_speed)
+        
+        # 计算动画终点和起点
         endpoint = (self.master.geometry().topLeft() 
                     + QPoint(self.master.geometry().width() / 2, self.master.geometry().height() / 2) 
                     - QPoint(self.geometry().width() / 2, self.orig_height / 2))
@@ -3070,10 +3128,19 @@ class ListView(MyWidget):
         startpoint = QPoint(endpoint.x(), 
                     QGuiApplication.primaryScreen().availableGeometry().height() 
                   + QGuiApplication.primaryScreen().availableGeometry().top())
-        self.startanimation_1.setEndValue(endpoint)
-        self.startanimation_1.setStartValue(startpoint)
+        
+        # 使用通用动画创建方法
+        self.startanimation_1 = self.create_animation(
+            b"pos",
+            400,
+            startpoint,
+            endpoint
+        )
+        
         self.setGeometry(self.x(), self.y(), self.width(), 1)
         self.startanimation_1.start()
+        
+        # 设置定时器启动第二阶段动画
         self.timer = QTimer()
         self.timer.timeout.connect(self.showStartAnimation2)
         self.timer.start(400 / widget.animation_speed)
@@ -3082,12 +3149,17 @@ class ListView(MyWidget):
     def showStartAnimation2(self):
         Base.log("D", "开始启动动画（阶段2）", "ListView.showStartAnimation")
         self.timer.stop()
+        
+        # 获取当前尺寸信息
         width, height = self.width(), self.orig_height
-        self.startanimation_2 = QPropertyAnimation(self, b"size")
-        self.startanimation_2.setDuration(400 / widget.animation_speed)
-        self.startanimation_2.setStartValue(QSize(width, 1))
-        self.startanimation_2.setEndValue(QSize(width, height))
-        self.startanimation_2.setEasingCurve(QEasingCurve.Type.OutCubic)
+        
+        # 使用通用动画创建方法
+        self.startanimation_2 = self.create_animation(
+            b"size",
+            400,
+            QSize(width, 1),
+            QSize(width, height)
+        )
         self.startanimation_2.start()
 
     def addData(self, item:Tuple[str, Callable]):
