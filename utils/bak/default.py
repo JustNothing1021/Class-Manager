@@ -2,7 +2,7 @@
 默认数据。
 """
 
-from utils.classdatatypes import (Class, Student, Achievement, AchievementTemplate, 
+from utils.classdtypes import (Class, Student, Achievement, AchievementTemplate, 
                       ScoreModification, ScoreModificationTemplate, OrderedKeyList,
                       AttendanceInfo, Day, ClassStatusObserver, AchievementStatusObserver,
                       Group,  HomeworkRule, DummyStudent, History)

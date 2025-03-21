@@ -46,6 +46,7 @@ from   utils.classobjects import (sys as base_sys, Class, Student, Achievement, 
                                 DEFAULT_CLASSES, DEFAULT_ACHIEVEMENTS, DEFAULT_SCORE_TEMPLATES, DEFAULT_USER)
 from   utils.classobjects  import (steprange, play_sound, play_music, stop_music, Thread, default_class_key)
 from   utils.classobjects  import (CORE_VERSION, CORE_VERSION_CODE, VERSION_INFO, CLIENT_UPDATE_LOG)
+from   utils.classobjects  import (Chunk, DataObject, UserDataBase)
 from   utils.consts        import app_style, app_stylesheet, nl
 from   utils.functions     import exc_info_short, pass_exceptions
 from   utils.widgets       import ObjectButton, ProgressAnimatedListWidgetItem, SideNotice
@@ -70,8 +71,8 @@ base_sys.stdout                   = Base.captured_stdout   # SystemLogger
 "来自核心的标准输出"
 base_sys.stderr                   = Base.captured_stderr   # SystemLogger
 "来自核心的错误输出"
-log_queue:            Queue       = Base.window_log_queue
-"日志队列（给主界面的日志窗口用的）"
+# log_queue:            Queue       = Base.window_log_queue
+# "日志队列（给主界面的日志窗口用的）"
 widget:              "MainWindow"
 "主窗口"
 ctrlc_times = 0
@@ -79,7 +80,9 @@ ctrlc_times = 0
 
 
 
-def exception_handler(exc_type: Type[BaseException], exc_value: BaseException, exc_tb: TracebackType):
+def exception_handler(exc_type: Optional[Type[BaseException]] = None, 
+                      exc_value: Optional[BaseException] = None, 
+                      exc_tb: Optional[TracebackType] = None):
     """捕获异常并弹出错误框（给sys.excepthook用的）"""
     from utils.base import logger
     logger.exception("Uncaught exception occurred", exc_info=exc_value)
@@ -477,12 +480,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self.save_path = os.environ.get("USERPROFILE").replace("\\", "/") + f"/AppData/Roaming/ClassManager/chunks/{current_user}/classes.datas"
             self.backup_path = os.environ.get("USERPROFILE").replace("\\", "/") + "/AppData/Roaming/ClassManager/"
         super().__init__(user=current_user)
-        self.config_data(self.save_path)
+        # self.config_data(self.save_path)
         self.init_data()
         self.init_class_data(class_name=class_name, 
                              class_id=class_key, 
                              current_user=current_user, 
-                             class_obs_tps=50, achievement_obs_tps=50)
+                             class_obs_tps=10, achievement_obs_tps=10)
         self.stu_list_button_update.connect(self._grid_buttons)
         self.setup()
         self.achievement_obs.achievement_displayer = self.display_achievement
@@ -1974,7 +1977,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     def create_recover_point(self):
         """创建还原点"""
         Base.log("I", "询问是否创建还原点", "MainWindow.create_recovery_point")
-        if question_yes_no(self, "提示", "是否在当前时间创建数据还原点？", True, "question"):                                                                                                                                                   
+        if question_yes_no(self, "提示", "是否在当前时间创建数据还原点？", True, "question"):
             self.script_backup("only_data")
             self.show_tip("还原点创建成功", self, 5000)
             self.insert_action("创建还原点", self.show_recover_points, (162, 216, 162, 232, 255, 255), 30)
@@ -4044,7 +4047,6 @@ class AttendanceInfoWidget(AttendanceInfoEdit.Ui_Form, MyWidget):
 
         stu = self.mainwindow.target_class.students[num]
 
-
         if self.stu_states[num] == "early" and state != "early":
             for h in reversed(stu.history.values()): # 从最近的开始遍历
                 if h.temp.key == "go_to_school_early" and time.time() - h.execute_time_key / 1000 <= 86400 and h.executed: 
@@ -4746,7 +4748,23 @@ self.random_choose_stu(
 )]""", "随机抽学生"),
             ("""\
 import math
-print(math.sqrt(114514))""", "计算114514的平方根")
+print(math.sqrt(114514))""", "计算114514的平方根"),
+            ("""\
+DataObject.saved_objects = 0
+Chunk.use_threadpool = True
+Chunk.min_task_per_thread = 200
+Chunk.max_task_per_thread = 500
+c = Chunk("chunks/test_chunk/example", self.database)
+t = time.time()
+c.save(1)
+print("时间:", time.time() - t)
+print("数量:", DataObject.saved_objects)
+print("速率:", (DataObject.saved_objects / (time.time() - t)))""", "测试保存数据分组"),
+
+("""
+for _ in range(114):
+    self.send_modify("wearing_bad", list(self.target_class.students.values()))
+""", "大数据测试")
         ]   
         self.comboBox.clear()
         self.comboBox.addItem("快捷命令")
@@ -4874,9 +4892,14 @@ print(math.sqrt(114514))""", "计算114514的平方根")
         self.pushButton_4.setEnabled(True)
 
 
-if __name__ == "__main__":
+
+from memory_profiler import profile, memory_usage
+# @profile(precision=4)
+def main():
+    global widget
     # 登录模块写在这里，用户名存在current_user里面就行
-    user = login()
+    # user = login()
+    user = "default"
     class_key = default_class_key
     widget = MainWindow(*sys.argv, current_user=user, class_key=class_key)
     # 其实MainWindow也只是做了个接口，整个程序还没做完（因为还有分班和添加/删除学生）
@@ -4893,5 +4916,8 @@ if __name__ == "__main__":
         "等待自动保存完成"
         time.sleep(0.1)
     Base.log("I", "自动保存完成，趋势", "MainThread")
-    sys.exit(stat)
+    # sys.exit(stat)
+
+if __name__ == "__main__":
+    main()
     

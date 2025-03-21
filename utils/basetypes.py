@@ -1,7 +1,3 @@
-"""
-算法的核心。
-"""
-
 import time
 import sys
 import traceback
@@ -700,6 +696,9 @@ def sep_uuid(uuid, sep: str = "/", length: int = 8) -> str:
 class Object(object):
     "一个基础类"
 
+    # def __init__(self):
+    #     self._uuid = gen_uuid()
+
     @property
     def uuid(self):
         "获取对象的UUID"
@@ -717,6 +716,9 @@ class Object(object):
     def uuid(self):
         "删除对象的UUID"
         raise AttributeError("不能删除对象的UUID")
+    
+    def refresh_uuid(self):
+        self._uuid = gen_uuid()
 
 
     def copy(self):
@@ -757,12 +759,116 @@ logger.add(
 )
 
 
+import colorama
+
+colorama.init(autoreset=True)
+class Color:
+    """颜色类（给终端文字上色的）
+    
+    :example:
+    
+    >>> print(Color.RED + "Hello, " + Color.End + "World!")
+    Hello, World!       (红色Hello，默认颜色的World)
+    
+    """
+    RED     =   colorama.Fore.RED
+    "红色"
+    GREEN   =   colorama.Fore.GREEN
+    "绿色"
+    YELLOW  =   colorama.Fore.YELLOW
+    "黄色"
+    BLUE    =   colorama.Fore.BLUE
+    "蓝色"
+    MAGENTA =   colorama.Fore.MAGENTA
+    "品红色"
+    CYAN    =   colorama.Fore.CYAN
+    "青色"
+    WHITE   =   colorama.Fore.WHITE
+    "白色"
+    BLACK   =   colorama.Fore.BLACK
+    "黑色"
+    END     =   colorama.Fore.RESET
+    "着色结束"
+    @staticmethod
+    @final
+    def from_rgb(r:int, g:int, b:int) -> str:
+        "从RGB数值中生成颜色"
+        return f"\033[38;2;{r};{g};{b}m"
+
+log_file = open(f'log/ClassManager_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}_{str(int((time.time() % 1) * 1000000)).zfill(6)}.log', "a", buffering=1, encoding="utf-8")
+
+class Mutex:
+    "一个简单的互斥锁"
+    def __init__(self):
+        self.locked = False
+
+    def lock(self):
+        "锁定"
+        if self.locked:
+            raise RuntimeError("互斥锁已经被锁定")
+        self.locked = True
+
+    def unlock(self):
+        "解锁"
+        if not self.locked:
+            raise RuntimeError("互斥锁没有被锁定")
+        self.locked = False
+
+    def __enter__(self):
+        self.lock()
+    
+    def __exit__(self, exc_type:type, exc_val:Exception, exc_tb:traceback.StackSummary):
+        self.unlock()
+
+
+
+class FrameCounter:
+    "帧计数器"
+    def __init__(self, maxcount: Optional[int] = None, timeout: Optional[float] = None):
+        "初始化帧计数器"
+        self.maxcount = maxcount
+        self.timeout = timeout
+        self._c = 0
+        self.running = False
+        
+    @property
+    def _t(self):
+        "获取当前时间戳"
+        return time.time()
+    
+    @property
+    def framerate(self):
+        "获取帧率"
+        if self._c == 0 or not self.running:
+            return 0
+        return self._c / self._t
+
+
+    def start(self):
+        "启动计数器"
+        if self.running:
+            raise RuntimeError("这个计数器已经启动过了！")
+        self._c = 0
+        self.running = True
+        while (self.maxcount is None or self._c < self.maxcount) and (self.timeout is None or time.time() - self._t <= self.timeout) and self.running:
+            self._c += 1
+
+    def stop(self):
+        "停止计数器"
+        self.running = False
+
+
+
+
+
 # 启用loguru的异常捕获
 logger.catch(onerror=lambda exc: Base.log_exc("logger捕获到异常", exc=exc))
 class Base(Object):
     "工具基层"
-    fast_log_file = open("log_buffered.txt", "a", buffering=1, encoding="utf-8")
-    "临时日志文件（现在没用了）"
+    log_file = log_file
+    "日志文件"
+    fast_log_file = open("log_buffered.txt", "w", buffering=1, encoding="utf-8")
+    "临时日志文件"
     stdout_orig = stdout_orig
     "标准输出"
     stderr_orig = stderr_orig
@@ -771,8 +877,8 @@ class Base(Object):
     "经过处理的输出"
     captured_stderr = SystemLogger(sys.stderr, logger_name="sys.stderr", function=lambda m: Base.log("E", m, "sys.stderr"))
     "经过处理的错误输出"
-    window_log_queue = Queue()
-    "主窗口显示日志的队列（每一个项目是一行的字符串）"
+    # window_log_queue = Queue()
+    # "主窗口显示日志的队列（每一个项目是一行的字符串）"
     console_log_queue = Queue()
     "控制台日志队列"
     logfile_log_queue = Queue()
@@ -814,62 +920,139 @@ class Base(Object):
         lt = time.localtime()
         return F"{lt.tm_year}-{lt.tm_mon:02}-{lt.tm_mday:02} {lt.tm_hour:02}:{lt.tm_min:02}:{lt.tm_sec:02}.{int((time.time()%1)*1000):03}"
 
+    # @staticmethod
+    # def log(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
+    #             """
+    #             向控制台和日志输出信息
+    #             :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
+    #             :param msg: 日志消息
+    #             :param source: 日志来源
+    #             """
+    #             # 如果日志等级太低就不记录
+    #             if (msg_type == "D" and Base.log_level not in ("D"))                \
+    #                     or (msg_type == "I" and Base.log_level not in ("D", "I"))            \
+    #                     or (msg_type == "W" and Base.log_level not in ("D", "I", "W"))        \
+    #                     or (msg_type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
+    #                     or (msg_type == "F" or msg_type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
+    #                 return
+
+    #             if not isinstance(msg, str):
+    #                 msg = msg.__repr__()
+    #             for m in msg.splitlines():
+    #                 if not m.strip():
+    #                     continue
+    #                 frame = inspect.currentframe()
+    #                 file = frame.f_back.f_code.co_filename.replace(cwd, "")
+    #                 if file == "<string>":
+    #                     lineno = 0
+    #                 if file.startswith(("/", "\\")):
+    #                     file = file[1:]
+    #                 frame = inspect.currentframe()
+    #                 caller_frame = frame.f_back
+    #                 # caller_function = caller_frame.f_code.co_name
+    #                 # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
+    #                 # if not (caller_function == 'write' or caller_function == 'writelines'):
+    #                 log_level = {
+    #                     "I": "INFO",
+    #                     "W": "WARNING",
+    #                     "E": "ERROR",
+    #                     "F": "CRITICAL",
+    #                     "C": "CRITICAL",
+    #                     "D": "DEBUG"
+    #                 }.get(msg_type, "INFO")
+    #                 # 避免日志套娃，只在loguru中记录一次
+
+    #                 # 其实不需要考虑这些，只要一开始就给log写到原始输出而不是sys.stdout就行了
+    #                 filename = (caller_frame.f_code.co_filename)
+    #                 file_basename = os.path.basename(filename)
+    #                 # func_name = caller_frame.f_code.co_name
+    #                 lineno = caller_frame.f_lineno
+    #                 logger.bind(file=file_basename, 
+    #                             source=source, 
+    #                             lineno=lineno, 
+    #                             full_file=file, 
+    #                             source_with_lineno=f"{source}:{lineno}").log(log_level, m)
+    #                 short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
+    #                 Base.short_log_info.append(short_info)
+    #                 short_info = short_info[-Base.short_log_keep_length:]
+    #                 Base.logged_count += 1
+
     @staticmethod
     def log(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
-                """
-                向控制台和日志输出信息
-                :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
-                :param msg: 日志消息
-                :param source: 日志来源
-                """
-                # 如果日志等级太低就不记录
-                if (msg_type == "D" and Base.log_level not in ("D"))                \
-                        or (msg_type == "I" and Base.log_level not in ("D", "I"))            \
-                        or (msg_type == "W" and Base.log_level not in ("D", "I", "W"))        \
-                        or (msg_type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
-                        or (msg_type == "F" or msg_type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
-                    return
+            """
+            向控制台和日志输出信息
 
-                if not isinstance(msg, str):
-                    msg = msg.__repr__()
-                for m in msg.splitlines():
-                    if not m.strip():
-                        continue
-                    frame = inspect.currentframe()
-                    file = frame.f_back.f_code.co_filename.replace(cwd, "")
-                    if file == "<string>":
-                        lineno = 0
-                    if file.startswith(("/", "\\")):
-                        file = file[1:]
-                    frame = inspect.currentframe()
-                    caller_frame = frame.f_back
-                    # caller_function = caller_frame.f_code.co_name
-                    # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
-                    # if not (caller_function == 'write' or caller_function == 'writelines'):
-                    log_level = {
-                        "I": "INFO",
-                        "W": "WARNING",
-                        "E": "ERROR",
-                        "F": "CRITICAL",
-                        "C": "CRITICAL",
-                        "D": "DEBUG"
-                    }.get(msg_type, "INFO")
-                    # 避免日志套娃，只在loguru中记录一次
+            :param type: 类型
+            :param msg: 信息
+            :param send: 发送者
+            :return: None
+            """
+            if not isinstance(msg, str):
+                msg = msg.__repr__()
+            for m in msg.splitlines():
+                if msg_type == "I":
+                    color = Color.GREEN
+                elif msg_type == "W":
+                    color = Color.YELLOW
+                elif msg_type == "E":
+                    color = Color.RED
+                elif msg_type == "F" or msg_type == "C":
+                    color = Color.MAGENTA
+                elif msg_type == "D":
+                    color = Color.CYAN
+                else:
+                    color = Color.WHITE
+                
+                if not m.strip():
+                    continue
+                frame = inspect.currentframe()
+                lineno = frame.f_back.f_lineno
+                file = frame.f_back.f_code.co_filename.replace(cwd, "")
+                if file == "<string>":
+                    lineno = 0
+                if file.startswith(("/", "\\")):
+                    file = file[1:]
+                cm = f"{Color.BLUE}{Base.gettime()}{Color.END} {color}{msg_type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
+                # lm = f"{Base.gettime()} {msg_type} {(source).ljust(35)} {m}" 
+                lfm = f"{Base.gettime()} {msg_type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
+                # Base.window_log_queue.put(lm)
+                Base.console_log_queue.put(cm)
+                Base.logfile_log_queue.put(lfm)
+                # Base.log_file.write(lfm + "\n")
+                # print(lfm, file=Base.fast_log_file)2
+                # Base.log_file.flush()
+                short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
+                Base.short_log_info.append(short_info)
+                Base.short_log_info = Base.short_log_info[-Base.short_log_keep_length:]
+                Base.logged_count += 1
 
-                    # 其实不需要考虑这些，只要一开始就给log写到原始输出而不是sys.stdout就行了
-                    filename = (caller_frame.f_code.co_filename)
-                    file_basename = os.path.basename(filename)
-                    # func_name = caller_frame.f_code.co_name
-                    lineno = caller_frame.f_lineno
-                    logger.bind(file=file_basename, 
-                                source=source, 
-                                lineno=lineno, 
-                                full_file=file, 
-                                source_with_lineno=f"{source}:{lineno}").log(log_level, m)
-                    short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
-                    Base.short_log_info.append(short_info)
-                    short_info = short_info[-Base.short_log_keep_length:]
-                    Base.logged_count += 1
+    @staticmethod
+    def log_thread_logfile():
+        "把日志写进日志文件的线程的运行函数"
+        while Base.logger_running:
+            s = Base.logfile_log_queue.get()
+            Base.log_file.write(s + "\n")
+            Base.log_file.flush()
+
+
+    @staticmethod
+    def log_thread_console():
+        "把日志写在终端的线程的运行函数"
+        while Base.logger_running:
+            s = Base.console_log_queue.get()
+            Base.stdout_orig.write(s + "\n")
+            Base.stdout_orig.flush()
+
+    @staticmethod
+    def stop_loggers():
+        "停止所有日志记录器"
+        Base.logger_running = False
+
+    console_log_thread = Thread(target=lambda: Base.log_thread_console(), daemon=True, name="ConsoleLogger")
+    "把日志写在终端的线程的线程对象"
+    logfile_log_thread = Thread(target=lambda: Base.log_thread_logfile(), daemon=True, name="FileLogger")
+    "把日志写进日志文件的线程的线程对象"
+
 
 
 
@@ -952,7 +1135,8 @@ class Base(Object):
                 return
         Base.log(level, f"{info} [{exc.__class__.__qualname__}] {exc}", sender)
 
-
+Base.console_log_thread.start()
+Base.logfile_log_thread.start()
 
 
 class SupportsKeyOrdering(ABC):

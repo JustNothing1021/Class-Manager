@@ -20,10 +20,11 @@ from utils.basetypes import int8, int16, int32, int64, inf, nan
 from utils.basetypes import sys, Stack, Thread, steprange
 from utils.update_check import VERSION_INFO, CLIENT_UPDATE_LOG
 from utils.functions import play_music, play_sound, stop_music
-from utils.classdatatypes import (Student, DummyStudent, StrippedStudent,
+from utils.classdtypes import (Student, DummyStudent, StrippedStudent,
         Class, Group, AttendanceInfo, ScoreModification, ScoreModificationTemplate,
         Achievement, AchievementTemplate, HomeworkRule, DayRecord, Day,
         ClassData, History, ClassObj)
+from utils.dataloader import Chunk, DataObject, UserDataBase 
 
 debug = True
 
@@ -132,12 +133,50 @@ class ClassObj(ClassObj):
             return ClassObj.load_data(path, strict=True)
             
 
-        except:
+        except Exception as e:
             if strict:
                 raise
             Base.log_exc("读取存档" + path + "失败：", "Mainhread.load_data")
             Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
             Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
+            import errno
+            if isinstance(e, OSError):
+                if e.errno == errno.EACCES:
+                    QMessageBox.critical(None, "出错了！", f"没有权限读取文件[{path}]，请检查文件权限")
+                    os._exit(1)
+                elif e.errno == errno.EPERM:
+                    QMessageBox.critical(None, "出错了！", f"没有权限读文件[{path}]，请检查文件权限")
+                    os._exit(1)
+
+                elif e.errno == errno.EISDIR:
+                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个目录，请检查文件路径")
+                    os._exit(1)
+
+                elif e.errno == errno.ENOSPC:
+                    QMessageBox.critical(None, "出错了！", f"磁盘空间不足，无法读取文件[{path}]，请清理后重新尝试")
+                    os._exit(1)
+
+                elif e.errno == errno.ENOENT:
+                    Base.log("W", "文件不存在，可能是首次加载，重置所有数据", "MainThread.load_data")
+
+                elif e.errno == errno.EMFILE:
+                    QMessageBox.critical(None, "出错了！", f"打开文件过多，无法读取文件[{path}]")
+                    os._exit(1)
+
+                elif e.errno == errno.EIO:
+                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生I/O错误")
+                    os._exit(1)
+
+                elif e.errno == errno.EBADF:
+                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个无效的文件描述符")
+                    os._exit(1)
+
+                else:
+                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生未知错误：\n{traceback.format_exc()}")
+                    os._exit(1)
+                
+
+
             QMessageBox.critical(None, "出错了！", f"从[{path}]加载文件出错：\n{traceback.format_exc()}\n所有数据将被重置。\n\n（你没有忘记建还原点，对吧？）")
             ClassObj.reset_data(path)
             return ClassObj.load_data(path, strict=True)
@@ -372,7 +411,7 @@ class ClassObj(ClassObj):
         self.last_reset:float
         self.history_data:Dict[float, ClassObj.History]
         self.save_path:str = saving_path
-
+        self.database: UserDataBase
         Base.log("W", "警告：当前仅加载完成数据，需具体设置详细用户/班级信息（self.init_class_data）", "ClassObjects")
 
     def init_class_data(self, current_user:str=None, 
@@ -408,7 +447,7 @@ class ClassObj(ClassObj):
                          version:str,
                          version_code:int,
                          last_reset:float,
-                         history_data:Dict[float, Dict[str, Class]],
+                         history_data:Dict[float, History],
                          classes:Dict[str, Class],
                          templates:Dict[str, "ClassObj.ScoreModificationTemplate"],
                          achievements:Dict[str, AchievementTemplate],
@@ -485,6 +524,23 @@ class ClassObj(ClassObj):
             self.current_day_attendance,
             path
         )
+
+    @property
+    def database(self) -> UserDataBase:
+        return UserDataBase(
+            self.current_user,
+            time.time(),
+            CORE_VERSION,
+            CORE_VERSION_CODE,
+            self.last_reset,
+            self.history_data,
+            self.classes,
+            self.modify_templates,
+            self.achievement_templates,
+            self.last_start_time,
+            self.weekday_record,
+            self.current_day_attendance
+        )
         
     @staticmethod
     def reset_data(path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas"):
@@ -505,7 +561,7 @@ class ClassObj(ClassObj):
             DEFAULT_ACHIEVEMENTS.copy(),
             time.time(),
             [],
-            ClassObj.AttendanceInfo().copy(),
+            ClassObj.AttendanceInfo(default_class_key).copy(),
             path
         )
         

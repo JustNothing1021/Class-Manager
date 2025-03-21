@@ -1,5 +1,5 @@
 from utils.basetypes import * # 懒得写import了
-
+import base64
 
 def get_random_template(templates: "OrderedKeyList[ClassObj.ScoreModificationTemplate]"):
 
@@ -90,6 +90,8 @@ class ClassObj(Base):
 # 小寄巧：如果一个类在需要在类型标注里面用到但还没定义可以用引号括起来
     class Student(Object, SupportsKeyOrdering):
             "一个学牲"
+
+            chunk_type_name: Literal["Student"] = "Student"
 
             score_dtype = HighPrecision
             "记录分数的数据类型（还没做完别乱改）"
@@ -337,6 +339,7 @@ class ClassObj(Base):
                 achievements = None
                 if reset_achievments:
                     achievements = self.reset_achievements()
+                self.refresh_uuid()
                 return (score, highest, lowest, history, achievements)
 
             def get_group(self, class_obs:"ClassStatusObserver") -> "ClassObj.Group":
@@ -420,7 +423,7 @@ class ClassObj(Base):
             def to_string(self) -> str:
                 "将学生对象转换为JSON格式"
                 return json.dumps({
-                    "type":                     "Student",
+                    "type":                     self.chunk_type_name,
                     "name":                     self.name,
                     "num":                      self.num,
                     "score":                    float(self.score),
@@ -459,6 +462,7 @@ class ClassObj(Base):
 
     class Group(Object):
         "一个小组"
+        chunk_type_name: Literal["Group"] = "Group"
 
         def __init__(self, 
                     key:          str, 
@@ -512,7 +516,7 @@ class ClassObj(Base):
             "将小组对象转化为字符串。"
             return json.dumps(
                 {
-                    "type": "Group",
+                    "type": self.chunk_type_name,
                     "key": self.key,
                     "name": self.name,
                     "leader": self.leader.uuid,
@@ -531,6 +535,7 @@ class ClassObj(Base):
 
     class ScoreModificationTemplate(Object, SupportsKeyOrdering):
             "分数加减操作的模板。"
+            chunk_type_name: Literal["ScoreModificationTemplate"] = "ScoreModificationTemplate"
             def __init__(self, 
                         key:             str, 
                         modification:    float, 
@@ -567,7 +572,7 @@ class ClassObj(Base):
             def to_string(self):
                 return json.dumps(
                     {
-                        "type": "ScoreModificationTemplate",
+                        "type": self.chunk_type_name,
                         "key": self.key,
                         "mod": self.mod,
                         "title": self.title,
@@ -581,6 +586,7 @@ class ClassObj(Base):
 
 
     class ScoreModification(Object):
+            chunk_type_name: Literal["ScoreModification"] = "ScoreModification"
             def __init__(self,  template:     "ClassObj.ScoreModificationTemplate",
                                 target:       "ClassObj.Student",
                                 title:        Optional[str]                = None,
@@ -763,7 +769,7 @@ class ClassObj(Base):
             def to_string(self):
                 return json.dumps(
                     {
-                        "type":             "ScoreModification",
+                        "type":              self.chunk_type_name,
                         "template":          self.temp.uuid,
                         "target":            self.target.uuid,
                         "title":             self.title,
@@ -780,6 +786,7 @@ class ClassObj(Base):
 
     class HomeworkRule(Object, SupportsKeyOrdering):
         "作业规则"
+        chunk_type_name: Literal["HomeworkRule"] = "HomeworkRule"
         def __init__(self, 
                     key:           str, 
                     subject_name:  str, 
@@ -802,7 +809,8 @@ class ClassObj(Base):
         def to_string(self):
             return json.dumps(
                 {
-                    "type":             "HomeworkRule",
+                    "type":             self.chunk_type_name,
+                    "key":              self.key,
                     "subject_name":     self.subject_name,
                     "ruler":            self.ruler,
                     "rule_mapping":     dict([(n, t.uuid) for n, t in self.rule_mapping.items()]),
@@ -814,6 +822,7 @@ class ClassObj(Base):
 
     class Class(Object, SupportsKeyOrdering):
             "一个班级"
+            chunk_type_name: Literal["Class"] = "Class"
             def __init__(self, 
                         name:            str, 
                         owner:           str, 
@@ -945,19 +954,20 @@ class ClassObj(Base):
                 Base.log("W", f" -> 重置班级：{self.name} ({self.key})")
                 for s in self.students.values():
                     s.reset()
+                self.refresh_uuid()
                 return class_orig
 
 
             def to_string(self) -> str:
                 return json.dumps(
                     {
-                        "type":      "Class",
+                        "type":      self.chunk_type_name,
                         "key":       self.key,
                         "name":      self.name,
                         "onwer":       self.owner,
                         "students":  [s.uuid for s in self.students.values()],
                         "groups":    [g.uuid for g in self.groups.values()],
-                        "cleaing_mapping": {{k: {t: [_s.uuid for _s in s] for t, s in v.items()}} for k, v in self.cleaing_mapping.items()},
+                        "cleaing_mapping": [(k, [(t, [_s.uuid for _s in s]) for t, s in v.items()]) for k, v in self.cleaing_mapping.items()],
                         "homework_rules": {n: t.uuid for n, t in self.homework_rules.items()}
                     }
                 )
@@ -995,12 +1005,10 @@ class ClassObj(Base):
         
 
 
-
-
-
     class ObserverError(Exception):"侦测器出错"
 
     class AchievementTemplate(Object, SupportsKeyOrdering):
+            chunk_type_name: Literal["AchievementTemplate"] = "AchievementTemplate"
             def __init__(self,     
                         key:str,
                         name:str,
@@ -1267,7 +1275,7 @@ class ClassObj(Base):
             
 
             def to_string(self):
-                    obj = {"type": "AchievementTemplate"}
+                    obj = {"type": self.chunk_type_name}
                     for attr in (
                     "name",
                     "desc",
@@ -1296,7 +1304,7 @@ class ClassObj(Base):
                             obj[attr] = getattr(self, attr)
                     
                     if hasattr(self, "other"):
-                        obj["other"] = [pickle.dumps(c) for c in self.other]
+                        obj["other"] = str(base64.b64encode(pickle.dumps(self.other)))
 
                     return json.dumps(obj)
 
@@ -1304,7 +1312,7 @@ class ClassObj(Base):
 
     class Achievement(Object):
         "一个真实被达成的成就"
-
+        chunk_type_name: Literal["Achievement"] = "Achievement"
         def __init__(self, 
                      template:      "ClassObj.AchievementTemplate", 
                      target:        "ClassObj.Student", 
@@ -1341,7 +1349,7 @@ class ClassObj(Base):
         def to_string(self):
             return json.dumps(
                 {
-                    "type": "Achievement",
+                    "type": self.chunk_type_name,
                     "time": self.time,
                     "time_key": self.time_key,
                     "template": self.temp.uuid,
@@ -1352,7 +1360,7 @@ class ClassObj(Base):
 
     class AttendanceInfo(Object):
         "考勤信息"
-
+        chunk_type_name: Literal["AttendanceInfo"] = "AttendanceInfo"
         def __init__(self, 
                     target_class:    str                   = "CLASS_TEST",
                     is_early:        List["ClassObj.Student"] = None, 
@@ -1408,6 +1416,7 @@ class ClassObj(Base):
 
         def to_string(self) -> str:
             return json.dumps({
+                "type":           self.chunk_type_name,
                 "target_class":   self.target_class,
                 "is_early":       [s.uuid for s in self.is_early],
                 "is_late":        [s.uuid for s in self.is_late],
@@ -1438,12 +1447,12 @@ class ClassObj(Base):
 
     class DayRecord(Object):
         "一天的记录"
-
+        chunk_type_name: Literal["DayRecord"] = "DayRecord"
         def __init__(self, 
                      target_class:   "ClassObj.Class",
                      weekday:         int, 
                      utc:             float, 
-                    attendance_info: "ClassObj.AttendanceInfo"):
+                     attendance_info: "ClassObj.AttendanceInfo"):
             """构造函数。
 
             :param target_class: 目标班级
@@ -1456,24 +1465,46 @@ class ClassObj(Base):
             self.attendance_info = attendance_info
             self.target_class = target_class
 
-
+        def to_string(self):
+            return json.dumps(
+                {
+                    "type":             self.chunk_type_name,
+                    "target_class":     self.target_class.uuid,
+                    "weekday":          self.weekday,
+                    "utc":              self.utc,
+                    "attendance_info":  self.attendance_info.uuid
+                }
+            )
 
 
     class History(Object):
         "每次重置保留的历史记录"
-        
+        chunk_type_name: Literal["History"] = "History"
         def __init__(self, 
                     classes:Dict[str, "ClassObj.Class"], 
-                    weekdays:Dict[int, "ClassObj.DayRecord"]):
+                    weekdays:Union[List["ClassObj.DayRecord"], Dict[float, "ClassObj.DayRecord"]],
+                    save_time: Optional[float] = None):
             self.classes = dict(classes)
-            self.time = time.time()
-            self.weekdays = weekdays
+            self.time = save_time or time.time()
+            self.weekdays: Dict[float, DayRecord] = {d.utc: d for d in weekdays} \
+                if isinstance(weekdays, list) else weekdays
 
         def __repr__(self):
             return  f"<History object at time {self.time:.3f}>"
         
+        def to_string(self):
 
+            if isinstance(self.weekdays, list):
+                self.weekdays = {d.utc: d for d in self.weekdays}
 
+            return json.dumps(
+                {
+                    "classes":  {k: v.uuid for k, v in self.classes.items()},
+                    "time":     self.time,
+                    "weekdays": {k: v.uuid for k, v in self.weekdays.items()}
+                }
+            )
+        
 
 
 
@@ -1561,4 +1592,17 @@ Day = ClassObj.DayRecord
 ClassData = ClassObj.ClassData
 History = ClassObj.History
 
+ClassDataType = Union[Student, Class, Group, 
+                      AttendanceInfo, 
+                      ScoreModification, ScoreModificationTemplate,
+                      Achievement, AchievementTemplate, 
+                      DayRecord]
 
+default_score_template = ScoreModificationTemplate("如果你看到了这行信息，多半是加载存档出问题了", 0, "默认模板", "这个模板没用，只是占位用的")
+default_student = Student("如果你看到了这行信息，多半是加载存档出问题了", 114514, 1919810, "CLASS_1145")
+default_achievement_template = AchievementTemplate("如果你看到了这行信息，多半是加载存档出问题了", 
+                                                   "一个不可能达成的成就", 
+                                                   "这个成就正如字面意思，是不可能达成的", 
+                                                   condition_info="别看了，不可能达成就是不可能达成", 
+                                                   further_info="我触发条件都写的lambda: 0.1 + 0.2 == 0.3，怎么可能达成", 
+                                                   others=lambda: 0.1 + 0.2 == 0.3) # sonarqube: disable-python:S1244
