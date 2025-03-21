@@ -17,7 +17,7 @@ TOKEN = "9bde0e6b1c0fca0ff36408665fb75306"
 
 AUTHOR = "JustNothing_1021"
 
-REPO_NAME = "Class-Manager"
+REPO_NAME = "ClassManager"
 
 MASTER = "master"
 
