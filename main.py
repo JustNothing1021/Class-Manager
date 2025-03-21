@@ -85,7 +85,16 @@ def exception_handler(exc_type: Optional[Type[BaseException]] = None,
                       exc_tb: Optional[TracebackType] = None):
     """捕获异常并弹出错误框（给sys.excepthook用的）"""
     from utils.base import logger
-    logger.exception("Uncaught exception occurred", exc_info=exc_value)
+    file_basename = os.path.basename(__file__)
+    file_path = __file__.replace(os.getcwd(), "").lstrip("\\/")
+    # 绑定上下文信息
+    logger.bind(
+        file=file_basename,
+        full_file=file_path,
+        source="exception_handler",
+        lineno=88,
+        source_with_lineno="exception_handler:88"
+    ).exception("Uncaught exception occurred", exc_info=exc_value)
     Base.log_exc("捕获到异常", "exception_handler", exc=exc_value)
     pagesize = 20
     exc_info = ["捕获到异常！\n"] + traceback.format_exception(exc_type, exc_value, exc_tb) + ["哇，我的程序果然没让我失望\n"]
@@ -96,6 +105,7 @@ def exception_handler(exc_type: Optional[Type[BaseException]] = None,
             currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
             parent.critical("错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
     except NameError:
+        parent = None
         for i in range(total):
             currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
             QMessageBox.critical(parent, "错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
@@ -4893,7 +4903,18 @@ for _ in range(114):
 
 
 
-from memory_profiler import profile, memory_usage
+try:
+    from memory_profiler import profile, memory_usage
+except ImportError:
+    def profile(precision=4):
+        def decorator(func):
+            return func
+        return decorator
+    
+    def memory_usage(*args, **kwargs):
+        return [0]
+    
+    Base.log("W", "memory_profiler模块未安装,相关性能分析功能将被禁用")
 # @profile(precision=4)
 def main():
     global widget
