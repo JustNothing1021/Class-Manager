@@ -211,12 +211,14 @@ class MyMainWindow(QMainWindow):
         self.is_running = True
         self.setTopmost(True)
         self.move(200, 110)
-        self.setWindowFlags(Qt.WindowType.WindowCloseButtonHint |
+        self.setWindowFlags((Qt.WindowType.WindowCloseButtonHint |
                             Qt.WindowType.WindowMinimizeButtonHint |
                             Qt.WindowType.MSWindowsFixedSizeDialogHint |
                             Qt.WindowType.WindowTitleHint |    
                             Qt.WindowType.WindowSystemMenuHint | 
-                            Qt.WindowType.Window
+                            Qt.WindowType.Window)
+                            & ~Qt.WindowType.WindowMaximizeButtonHint
+                            & ~Qt.WindowType.WindowMinimizeButtonHint
                         )
         self.close_count = 0
         self.clear_time_timer = QTimer()
@@ -283,12 +285,14 @@ class MyWidget(QWidget):
         self.centralwidget = master
         self.setParent(master)
         Base.log("I", "子窗口创建", "MyWidget")
-        self.setWindowFlags(Qt.WindowType.WindowCloseButtonHint |      
+        self.setWindowFlags((Qt.WindowType.WindowCloseButtonHint |      
                             # Qt.WindowType.WindowMinimizeButtonHint |      
                             Qt.WindowType.MSWindowsFixedSizeDialogHint |    
                             Qt.WindowType.WindowTitleHint |                 
                             Qt.WindowType.WindowSystemMenuHint |
-                            Qt.WindowType.Window 
+                            Qt.WindowType.Window) 
+                            & ~Qt.WindowType.WindowMaximizeButtonHint
+                            & ~Qt.WindowType.WindowMinimizeButtonHint
                         )
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
 
@@ -2497,8 +2501,8 @@ class UpdateThread(QThread):
                             Base.log("W", "疑似添加/减少学生，正在重新加载", "UpdateThread.run")
                             self.mainwindow.grid_buttons()
                         if self.first_start:
-                            Thread(target=lambda: (time.sleep(8), self.detect_new_version())).start()
-                            Thread(target=lambda: (time.sleep(5), self.detect_update())).start()
+                            Thread(target=self.detect_new_version).start()
+                            Thread(target=self.detect_update).start()
                             self.first_start = False
                         time.sleep(0.5)
 

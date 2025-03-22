@@ -525,21 +525,34 @@ class Chunk:
 
         Base.log("D", "所有数据库连接已关闭", "Chunk.save")
 
+        
+        # 保存存档数据用的，没必要存json了（多几个文件也让存档文件看起来充实点?）
+        json.dump(self.bound_data.user, open(os.path.join(self.path, "user"), "w+"))
+        json.dump(self.bound_data.last_reset, open(os.path.join(self.path, "last_reset"), "w+"))
+        json.dump(self.bound_data.save_time, open(os.path.join(self.path, "save_time"), "w+"))
+        json.dump(self.bound_data.version, open(os.path.join(self.path, "version"), "w+"))
+        json.dump(self.bound_data.version_code, open(os.path.join(self.path, "version_code"), "w+"))
+        json.dump(self.bound_data.last_start_time, open(os.path.join(self.path, "last_start_time"), "w+"))
+
+
 
 
         # 保存卫生值日安排
-        if hasattr(self.bound_data, 'cleaning_staff') and self.bound_data.cleaning_staff:
-            try:
-                cleaning_staff_path = os.path.join(self.path, "cleaning_staff")
-                with open(cleaning_staff_path, "w+", encoding="utf-8") as f:
-                    json.dump(self.bound_data.cleaning_staff, f, ensure_ascii=False, indent=2)
-                Base.log("D", f"卫生人员列表已保存到 {cleaning_staff_path}", "Chunk.save")
-            except Exception as e:
-                Base.log("E", f"保存卫生人员列表失败: {str(e)}", "Chunk.save")
+
+        # if hasattr(self.bound_data, 'cleaning_staff') and self.bound_data.cleaning_staff:
+        #     try:
+        #         cleaning_staff_path = os.path.join(self.path, "cleaning_staff")
+        #         with open(cleaning_staff_path, "w+", encoding="utf-8") as f:
+        #             json.dump(self.bound_data.cleaning_staff, f, ensure_ascii=False, indent=2)
+        #         Base.log("D", f"卫生人员列表已保存到 {cleaning_staff_path}", "Chunk.save")
+        #     except Exception as e:
+        #         Base.log("E", f"保存卫生人员列表失败: {str(e)}", "Chunk.save")
+
+        # 有点小问题，因为其他Object为基类的对象都需要存uuid，因为没有具体的对象连接
+        # 所以目前只能先给他uuid存进去，后面再用property（？）获取到具体的对象
+        # 懒得写了，先把别的优化好再来写这个吧
 
         # 保存其他基础数据
-            
-
 
 
 
