@@ -14,6 +14,7 @@ import platform
 import pickle
 import warnings
 import customtkinter
+import functools
 import dill               as pickle
 import pyqtgraph          as pg
 import numpy              as np
@@ -121,7 +122,7 @@ if sys.version_info < (3, 8):
     warnings.warn(f"建议使用Python3.8及以上的版本运行（当前为{sys.version_info.major}.{sys.version_info.minor}）")
 
 if sys.platform != "win32":
-    warnings.warn("本程序目前仅支持Windows操作系统，其他操作系统可能无法正常运行")
+    warnings.warn("本程序目前主要支持Windows操作系统，其他操作系统可能无法正常运行")
 
 
 has_pyaudio: bool = False
@@ -166,11 +167,11 @@ def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
     """自定义的异常消息处理函数 - 使用字典映射优化"""
     # 使用字典映射消息类型到日志级别
     msg_type_map = {
-        QtMsgType.QtDebugMsg: "D",
-        QtMsgType.QtInfoMsg: "I",
-        QtMsgType.QtWarningMsg: "W",
+        QtMsgType.QtDebugMsg:    "D",
+        QtMsgType.QtInfoMsg:     "I",
+        QtMsgType.QtWarningMsg:  "W",
         QtMsgType.QtCriticalMsg: "C",
-        QtMsgType.QtFatalMsg: "F"
+        QtMsgType.QtFatalMsg:    "F"
     }
     
     # 记录日志
@@ -298,7 +299,13 @@ class MyWidget(QWidget):
             super().setFixedSize(*args, **kwargs)
 
 
-    def create_animation(self, property_name, duration, start_value, end_value, easing_curve=QEasingCurve.Type.OutCubic):
+    def create_animation(self, 
+                        property_name: Union[QByteArray, bytes, bytearray, "memoryview[int]"],
+                        duration: int, 
+                        start_value: Any,
+                        end_value: Any, 
+                        easing_curve: Union[QEasingCurve, Type[QEasingCurve.Type]] = QEasingCurve.Type.OutCubic):
+        # 难绷啊，type[Type]是什么鬼，类型标注如写
         """创建通用动画
         
         Args:
@@ -449,6 +456,62 @@ class MyWidget(QWidget):
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
         self.show()
 
+class Command:
+    """快捷命令"""
+    def __init__(self, key: str, name: str, callable: str, for_which: Optional[Union[str, object]]="MainWindow"):
+        self.name = name
+        self.callable = callable
+        self.key = key
+        self.usage = 0
+        self.orig_func = lambda: None
+        self.for_which = for_which
+
+    def __repr__(self):
+        return f"Command(key={repr(self.key)}, name={repr(self.name)}, callable={repr(self.callable)})"
+    
+            
+command_list: List[Command] = []
+"快捷命令列表"
+lately_used_commands: List[Command] = []
+"最近使用命令列表"
+
+
+def as_command(key: str, name: str, for_which: Optional[Union[str, object]]="MainWindow"):
+    """快捷命令装饰器。
+    
+    :param key: 键值
+    :param name: 命令名称
+
+    """
+    global lately_used_commands
+    def decorator(func):
+        global lately_used_commands
+        cmd = Command(key, name, func, for_which)
+        Base.log("D", F"快捷命令注册：{cmd}, func={func}", "MainThread.as_command")
+        command_list.append(cmd)
+        cmd.orig_func = func
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            cmd.usage += 1
+            if cmd not in lately_used_commands:
+                lately_used_commands.append(cmd)
+            else:
+                lately_used_commands.remove(cmd)
+                lately_used_commands.append(cmd)
+            return func(*args, **kwargs)
+        cmd.callable = wrapper
+        return wrapper
+    return decorator
+
+
+
+
+
+
+# @as_command("test", "测试")
+# def test(*args, **kwargs):
+#     print("test", args, kwargs)
+
 
 
 
@@ -496,8 +559,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     stu_list_button_update = Signal()
     """学生列表按钮更新信号"""
 
-    label_update = Signal()
-    """标签更新信号"""
+
+
 
     def __init__(self, *args, class_name="测试班级", current_user=DEFAULT_USER, class_key="CLASS_TEST"):
         """窗口初始化
@@ -542,63 +605,55 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         "窗口是否在运行"
         self.framerate_update_time = time.time()
         self.updator_thread = UpdateThread(mainwindow=self)
-        class Command:
-            def __init__(self, key: str, name: str, callable: str):
-                self.name = name
-                self.callable = callable
-                self.key = key
-            def __repr__(self):
-                return f"Command(key={repr(self.key)}.name={repr(self.name)}, callable={repr(self.callable)})"
-            
-        self.command_list: List[Command] = []
+        
+        self.command_list = command_list
         self.action.triggered.connect(self.student_rank)
-        self.command_list.append(Command("stu_ranking", "学生排名", self.student_rank))
+        # self.command_list.append(Command("stu_ranking", "学生排名", self.student_rank))
         self.action_2.triggered.connect(self.manage_templates)
-        self.command_list.append(Command("manage_templates", "管理模板", self.manage_templates))
+        # self.command_list.append(Command("manage_templates", "管理模板", self.manage_templates))
         self.action_3.triggered.connect(self.open_setting_window)
-        self.command_list.append(Command("setting_menu", "设置菜单", self.open_setting_window))
+        # self.command_list.append(Command("setting_menu", "设置菜单", self.open_setting_window))
         self.action_5.triggered.connect(self.scoring_select)
-        self.command_list.append(Command("scoring_select", "多选学生", self.scoring_select))
+        # self.command_list.append(Command("scoring_select", "多选学生", self.scoring_select))
         self.action_7.triggered.connect(self.retract_lastest)
-        self.command_list.append(Command("retract_lastest", "撤销上步", self.retract_lastest))
+        # self.command_list.append(Command("retract_lastest", "撤销上步", self.retract_lastest))
         self.action_8.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(1))
         self.action_9.triggered.connect(lambda: self.tabWidget_2.setCurrentIndex(0))
         self.action_10.triggered.connect(self.save)
-        self.command_list.append(Command("save_data", "保存数据", self.save))
+        # self.command_list.append(Command("save_data", "保存数据", self.save))
         self.action_12.triggered.connect(self.reset_scores)
-        self.command_list.append(Command("reset_scores", "重置分数", self.reset_scores))
+        # self.command_list.append(Command("reset_scores", "重置分数", self.reset_scores))
         self.action_13.triggered.connect(self.show_all_history)
-        self.command_list.append(Command("show_all_history", "历史记录", self.show_all_history))
+        # self.command_list.append(Command("show_all_history", "历史记录", self.show_all_history))
         self.action_14.triggered.connect(self.save_data_as)
-        self.command_list.append(Command("save_data_as", "另存为", self.save_data_as))
+        # self.command_list.append(Command("save_data_as", "另存为", self.save_data_as))
         self.action_15.triggered.connect(self.music_selector)
-        self.command_list.append(Command("music_selector", "播放音乐", self.music_selector))
+        # self.command_list.append(Command("music_selector", "播放音乐", self.music_selector))
         self.action_16.triggered.connect(self.show_recover_points)
-        self.command_list.append(Command("show_recover_points", "显示恢复点", self.show_recover_points))
+        # self.command_list.append(Command("show_recover_points", "显示恢复点", self.show_recover_points))
         self.action_17.triggered.connect(self.create_recover_point)
-        self.command_list.append(Command("create_recover_point", "创建恢复点", self.create_recover_point))
-        self.action_18.triggered.connect(self.cleaing_score_sum_up)
-        self.command_list.append(Command("cleaning_score_sum_up", "卫生分结算", self.cleaing_score_sum_up))
+        # self.command_list.append(Command("create_recover_point", "创建恢复点", self.create_recover_point))
+        self.action_18.triggered.connect(self.cleaning_score_sum_up)
+        # self.command_list.append(Command("cleaning_score_sum_up", "卫生分结算", self.cleaning_score_sum_up))
         self.action_19.triggered.connect(self.show_attendance)
-        self.command_list.append(Command("show_attendance", "考勤记录", self.show_attendance))
+        # self.command_list.append(Command("show_attendance", "考勤记录", self.show_attendance))
         self.action_20.triggered.connect(self.show_noise_detector)
-        self.command_list.append(Command("show_noise_detector", "噪音检测", self.show_noise_detector))
+        # self.command_list.append(Command("show_noise_detector", "噪音检测", self.show_noise_detector))
         self.action_21.triggered.connect(self.random_select)
-        self.command_list.append(Command("random_select", "随机选取", self.random_select))
+        # self.command_list.append(Command("random_select", "随机选取", self.random_select))
         self.action_22.triggered.connect(self.homework_score_sum_up)
-        self.command_list.append(Command("homework_score_sum_up", "作业分结算", self.homework_score_sum_up))
+        # self.command_list.append(Command("homework_score_sum_up", "作业分结算", self.homework_score_sum_up))
         self.action_23.triggered.connect(self.about_this)
-        self.command_list.append(Command("about_this", "关于软件", self.about_this))
+        # self.command_list.append(Command("about_this", "关于软件", self.about_this))
         self.action_24.triggered.connect(self.show_update_log)
-        self.command_list.append(Command("show_update_log", "更新日志", self.show_update_log))
+        # self.command_list.append(Command("show_update_log", "更新日志", self.show_update_log))
         self.action_25.triggered.connect(lambda: Thread(target=lambda: self.updator_thread.detect_new_version(False)).start())
-        self.command_list.append(Command("detect_new_version", "检查更新", lambda: Thread(target=lambda: self.updator_thread.detect_new_version(False)).start()))
         self.action_26.triggered.connect(self.refresh_window)
-        self.command_list.append(Command("refresh_window", "刷新窗口", self.refresh_window))
+        # self.command_list.append(Command("refresh_window", "刷新窗口", self.refresh_window))
         self.action_28.triggered.connect(self.show_debug_window)
-        self.command_list.append(Command("show_debug_window", "调试菜单", self.show_debug_window))
+        # self.command_list.append(Command("show_debug_window", "调试菜单", self.show_debug_window))
         self.actionNew_Template.triggered.connect(self.new_template) # 笑死唯一一个不是默认名字的action控件
-        self.command_list.append(Command("new_template", "新建模板", self.new_template))
+        # self.command_list.append(Command("new_template", "新建模板", self.new_template))
 
         self.selected_quick_command: List[Optional[Command]] = [
             [c for c in self.command_list if c.key == "new_template"][0],
@@ -656,7 +711,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.show_error.connect(lambda args: self._critical(*args))
         self.show_question.connect(lambda args: self._question_if_exec(*args))
         self.going_to_exit.connect(self.do_exit)
-        self.label_update.connect(self._update_label)
         self.framecount = 0
         "自上一秒以来的更新帧数"
         self.framerate = 0
@@ -708,12 +762,34 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                         btn.clicked.disconnect()
                     except RuntimeError as e:
                         Base.log("W", f"尝试断开未连接的信号：(PushButton_{i}) {e}")
-                    btn.clicked.connect(self.selected_quick_command[i - 1].callable)
+                    cmd = self.selected_quick_command[i - 1]
+                    func = cmd.callable
+                    # if cmd.key in ("stu_ranking", "manage_templates", "setting_menu",
+                    #                         "scoring_select", "retract_lastest", "save_data",
+                    #                         "reset_scores", "show_all_history", "save_data_as", 
+                    #                         "music_selector", "show_recover_points", "create_recover_point",
+                    #                         "cleaning_score_sum_up", "show_attendance", "show_noise_detector", 
+                    #                         "random_select", "homework_score_sum_up", "about_this",
+                    #                         "show_update_log", "refresh_window", "show_debug_window",
+                    #                         "new_template", "detect_new_version"):
+                    if cmd.for_which == "MainWindow":
+                        btn.clicked.connect(lambda *, f=func: f(self)) # 因为不是直接调用的类方法，需要手动传一个self
+                    elif cmd.for_which:
+                        btn.clicked.connect(lambda *, f=func, c=cmd: f(c.for_which))
+                    else:
+                        btn.clicked.connect(lambda *, f=func: f())
                 btn.setEnabled(True)
             else:
                 btn.setText("未指定")
                 btn.setEnabled(False)
             btn.update()
+
+
+    @as_command("detect_new_version", "检测新版本")
+    def detect_new_version(self):
+        Base.log("I", "检测新版本", "MainWindow.detect_new_version")
+        Thread(target=self.updator_thread.detect_new_version).start()
+
 
     def edit_fast_command_btns(self):
         if not hasattr(self, "fast_command_edit_state"):
@@ -813,6 +889,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         super().show()
         self.is_running = True
 
+    @Slot()
+    @as_command("refresh_window", "刷新窗口")
     def refresh_window(self):
         Base.log("I", "刷新窗口", "MainWindow.refresh_window")
         self.updator_thread.terminate()
@@ -821,17 +899,22 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         
 
     def _refresh_logwindow(self):
+        "刷新日志窗口的接口"
         while self.is_running:
             self.log_window_refresh.emit()
             time.sleep(self.log_update_interval)
 
     @Slot()
+    @as_command("about_this", "关于工具")
     def about_this(self):
+        "显示关于信息"
         Base.log("I", "显示关于", "MainWindow.about")
         self.about_window = AboutWindow(self, self)
         self.about_window.show()
     
-    def show_debug_window(self):    
+    @as_command("show_debug_window", "调试窗口")
+    def show_debug_window(self):   
+        "显示调试窗口" 
         Base.log("I", "显示调试窗口", "MainWindow.show_debug_window")
         self.debug_window = DebugWidget(self, self)
         self.debug_window.show()
@@ -839,6 +922,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     def _information(self, title, text, pixmap):
+        "显示信息框的接口"
         Base.log("I", f"信息框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.information")
         msgbox = QMessageBox(QMessageBox.Icon.Information, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-main.png"))
@@ -846,6 +930,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     
     def _warning(self, title, text, pixmap):
+        "显示警告框的接口"
         Base.log("W", f"警告框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.warning")
         msgbox = QMessageBox(QMessageBox.Icon.Warning, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-warn.png"))
@@ -853,12 +938,14 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     def _critical(self, title, text, pixmap):
+        "显示错误框的接口"
         Base.log("C", f"错误框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.critical")
         msgbox = QMessageBox(QMessageBox.Icon.Critical, title, text, QMessageBox.StandardButton.Ok, parent=self)
         msgbox.setWindowIcon(pixmap or QPixmap("./img/logo/favicon-error.png"))
         msgbox.exec()
 
     def _question_if_exec(self, title, text, command, pixmap):
+        "询问框的接口"
         Base.log("I", f"询问框：{repr(title)} - {repr(text)}，pixmap={repr(pixmap)}", "MainWindow.question_if_exec")
         if question_yes_no(
             self, 
@@ -942,6 +1029,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.show_question.emit((title, text, command, pixmap))
 
     @Slot()
+    @as_command("music_selector", "播放音乐")
     def music_selector(self):
         Base.log("I", "按钮被点击", "MainWindow.music_selector")
         music_list:List[Tuple[str, Callable]]  = []
@@ -968,6 +1056,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.music_listview.show()
 
     @Slot()
+    @as_command("show_noise_detector", "噪声检测器")
     def show_noise_detector(self):
         if has_pyaudio:
             Base.log("I", "启动噪声检测器", "MainWindow.show_noise_detector")
@@ -1116,6 +1205,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
         painter.drawPixmap(-padding, -padding, self.width() + padding * 2, self.height() + padding * 2, pixmap)
         painter.end()
+        self.update()
 
     
 
@@ -1195,6 +1285,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         pickle.dump(infof, open(self.backup_path + "backup_info.dat", "wb"))
 
     @Slot()
+    @as_command("show_update_log", "更新日志")
     def show_update_log(self):
         self.information(("更新了！" if self.client_version_code < CLIENT_VERSION_CODE else "更新日志"), 
             (
@@ -1207,6 +1298,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
+    @as_command("new_template", "新建模板")
     def new_template(self):
         """新建模板窗口"""
         self.new_template_window = NewTemplateWidget(self, self)
@@ -1225,6 +1317,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         
 
     @Slot()
+    @as_command("manage_templates", "管理模板")
     def manage_templates(self):
         """管理模板窗口"""
         self.template_listbox = ListView(self, title="管理模板")
@@ -1426,6 +1519,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.history_detail_window.show(readonly)
 
     @Slot()
+    @as_command("scoring_select", "多选学生")
     def scoring_select(self, *, students:List[Student]=None):
         """多选并发送"""
         if students is None:
@@ -1487,6 +1581,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
             
     @Slot()
+    @as_command("save", "保存数据")
     def save(self):
         "保存当前存档。"
         if self.last_save_from_action - time.time() < -3:
@@ -1598,6 +1693,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
+    @as_command("open_setting_window", "打开设置窗口")
     def open_setting_window(self):
         """设置窗口"""
         Base.log("I", "打开设置窗口", "MainWindow.setting_window")
@@ -1605,11 +1701,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.setting_window.show()
 
     @Slot()
-    def cleaing_score_sum_up(self):
+    @as_command("cleaning_score_sum_up", "卫生分结算")
+    def cleaning_score_sum_up(self):
         """打扫汇总"""
-        Base.log("I", "打开打扫汇总窗口", "MainWindow.cleaing_sumup")
-        self.cleaing_sumup_window = CleaningScoreSumUpWidget(mainwindow=self, master_widget=self)
-        self.cleaing_sumup_window.show()
+        Base.log("I", "打开打扫汇总窗口", "MainWindow.cleaning_sumup")
+        self.cleaning_sumup_window = CleaningScoreSumUpWidget(mainwindow=self, master_widget=self)
+        self.cleaning_sumup_window.show()
 
     def setup(self):
         """设置界面"""
@@ -1688,6 +1785,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             
 
     @Slot()
+    @as_command("random_select", "随机选取")
     def random_select(self):
         """随机选择"""
         Base.log("I", "随机选择", "MainWindow.random_select")
@@ -1695,6 +1793,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.random_select_window.show()
             
     @Slot()
+    @as_command("homework_score_sum_up", "作业分结算")
     def homework_score_sum_up(self):
         """作业总结"""
         Base.log("I", "打开作业总结窗口", "MainWindow.homework_sumup")
@@ -1703,6 +1802,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     
 
     @Slot()
+    @as_command("retract_lastest", "撤回上步")
     def retract_lastest(self):
         """撤回上步，覆写的是ClassObjects.retract_last"""
         if self.class_obs.opreation_record.size() == 0:
@@ -1716,6 +1816,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
+    @as_command("reset_scores", "重置分数")
     def reset_scores(self):
         """重置，覆写的是ClassObjects.reset"""
         Base.log("I", "询问是否重置", "MainWindow.reset")
@@ -1747,6 +1848,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                                                      zoom_text=zoom_text, master=master))
 
     @Slot()
+    @as_command("show_attendance", "考勤记录")
     def show_attendance(self):
         """显示考勤"""
         self.attendance_window = AttendanceInfoWidget(self, self, self.current_day_attendance)
@@ -1786,6 +1888,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
+    @as_command("save_data_as", "另存为")
     def save_data_as(self):
         """另存为"""
         path = QFileDialog.getSaveFileName(self, "另存为", self.save_path, "数据文件 (classes.datas)")[0]
@@ -1793,6 +1896,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self.save_data(path)
 
     @Slot()
+    @as_command("show_all_history", "历史记录")
     def show_all_history(self):
         """显示所有历史"""
         self.listview_all = ListView(
@@ -1952,6 +2056,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.lastest_listview.show()
 
     @Slot()
+    @as_command("stu_ranking", "学生排名")
     def student_rank(self):
         """显示学生排名"""
         self.list_view([(f"第{rank}名 {stu.name} {stu.score}分", lambda: None, (
@@ -1968,6 +2073,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         """显示小组排名"""
 
     @Slot()
+    @as_command("show_recover_points", "显示还原点")
     def show_recover_points(self):
         """显示还原点"""
         Base.log("I", "读取列表", "MainWindow.show_recovery_point")
@@ -2023,6 +2129,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                 Base.log("I", "加载还原点成功", "MainWindow.load_recovery_point")
 
     @Slot()
+    @as_command("create_recovery_point", "创建还原点")
     def create_recover_point(self):
         """创建还原点"""
         Base.log("I", "询问是否创建还原点", "MainWindow.create_recovery_point")
@@ -2032,15 +2139,10 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self.insert_action("创建还原点", self.show_recover_points, (162, 216, 162, 232, 255, 255), 30)
         
 
-    def update_label(self):
-        """更新标签"""
-        while 1:
-            self.label_update.emit()
-            time.sleep(0.1)
 
 
 
-    def _update_label(self):
+    def update(self):
         self.label_2.setText(QCoreApplication.translate("Form", F"{self.target_class.name}"))
         self.label_3.setText(QCoreApplication.translate("Form", F"{len(self.target_class.students)}", None))
         self.label_4.setText(QCoreApplication.translate("Form", F"{self.target_class.owner}", None))
@@ -2058,6 +2160,26 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             "中午" if 12 <= time.localtime().tm_hour < 14 else
             "下午" if 14 <= time.localtime().tm_hour < 18 else
             "晚上"))
+        try:
+            self.PushButton_10.clicked.disconnect(None)
+        except RuntimeError:
+            pass
+        try:
+            self.PushButton_11.clicked.disconnect(None)
+        except RuntimeError:
+            pass
+        try:
+            self.PushButton_12.clicked.disconnect(None)
+        except RuntimeError:
+            pass
+        self.PushButton_10.setText(QCoreApplication.translate("Form", lately_used_commands[-1].name if lately_used_commands else "暂无", None))
+        self.PushButton_11.setText(QCoreApplication.translate("Form", lately_used_commands[-2].name if len(lately_used_commands) >= 2 else "暂无", None))
+        self.PushButton_12.setText(QCoreApplication.translate("Form", lately_used_commands[-3].name if len(lately_used_commands) >= 3 else "暂无", None))
+        self.PushButton_10.clicked.connect((lambda: lately_used_commands[-1].callable(self) if lately_used_commands[-1].for_which == "MainWindow" else (lambda: lately_used_commands[-1].callable(lately_used_commands[-1].for_which) if lately_used_commands[-1].for_which else lately_used_commands[-1].callable())) if lately_used_commands else lambda: None)
+        self.PushButton_11.clicked.connect((lambda: lately_used_commands[-2].callable(self) if lately_used_commands[-2].for_which == "MainWindow" else (lambda: lately_used_commands[-2].callable(lately_used_commands[-2].for_which) if lately_used_commands[-2].for_which else lately_used_commands[-2].callable())) if len(lately_used_commands) >= 2 else lambda: None)
+        self.PushButton_12.clicked.connect((lambda: lately_used_commands[-3].callable(self) if lately_used_commands[-3].for_which == "MainWindow" else (lambda: lately_used_commands[-3].callable(lately_used_commands[-3].for_which) if lately_used_commands[-3].for_which else lately_used_commands[-3].callable())) if len(lately_used_commands) >= 3 else lambda: None)
+
+        super().update()
 
 
     def config_data(self,
@@ -2088,7 +2210,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         # window = ProgressAnimationTest()
         # window.show()
         self.updator_thread.start()
-        Thread(name="MainWindowUpdator", target=self.update_label, daemon=True).start()
         self.is_running = True
         self.insert_action("双击这种列表项目可查看信息", lambda: QMessageBox.information(self, "。", "孩子真棒"))
         Base.log("I", "线程启动完成，exec()", "MainWindow.mainloop")
@@ -3936,8 +4057,8 @@ class CleaningScoreSumUpWidget(CleaingScoreSumUp.Ui_Form, MyWidget):
         self.label_5.setText(QCoreApplication.translate("Form", self.mainwindow.modify_templates[self.mod_member[self.comboBox_2.currentIndex()]].desc))
         selected = self.comboBox.currentIndex() + 1
         if refresh_stu:
-            self.leader =  copy.deepcopy(self.mainwindow.target_class.cleaing_mapping[selected]["leader"])
-            self.member =  copy.deepcopy(self.mainwindow.target_class.cleaing_mapping[selected]["member"])
+            self.leader =  copy.deepcopy(self.mainwindow.target_class.cleaning_mapping[selected]["leader"])
+            self.member =  copy.deepcopy(self.mainwindow.target_class.cleaning_mapping[selected]["member"])
 
         self.listWidget.clear()
         for s in self.leader:
@@ -4978,20 +5099,24 @@ for _ in range(114):
 try:
     from memory_profiler import profile, memory_usage
 except ImportError:
-    def profile(precision=4):
+    warnings.warn("memory_profiler模块未安装, 相关性能分析功能将被禁用", RuntimeWarning)
+    def profile(precision=4):   # NOSONAR; NOQA: disable=unused-argument
         def decorator(func):
             return func
         return decorator
     
-    def memory_usage(*args, **kwargs):
+    def memory_usage(*args, **kwargs): # NOSONAR; NOQA: disable=unused-argument
         return [0]
     
     Base.log("W", "memory_profiler模块未安装,相关性能分析功能将被禁用")
+
+
 # @profile(precision=4)
 def main():
     global widget
     # 登录模块写在这里，用户名存在current_user里面就行
     # user = login()
+    # 为了迅速登录上去，我暂时给login()注释掉了，有需要可以改回去
     user = "default"
     class_key = default_class_key
     widget = MainWindow(*sys.argv, current_user=user, class_key=class_key)
@@ -5013,4 +5138,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

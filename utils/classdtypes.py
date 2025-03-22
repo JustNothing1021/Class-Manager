@@ -586,6 +586,7 @@ class ClassObj(Base):
 
 
     class ScoreModification(Object):
+            "分数修改记录。"
             chunk_type_name: Literal["ScoreModification"] = "ScoreModification"
             def __init__(self,  template:     "ClassObj.ScoreModificationTemplate",
                                 target:       "ClassObj.Student",
@@ -829,7 +830,7 @@ class ClassObj(Base):
                         students:        Union[Dict[int, "ClassObj.Student"], OrderedKeyList["ClassObj.Student"]], 
                         key:             str,  
                         groups:          Union[Dict[int, "ClassObj.Group"], OrderedKeyList["ClassObj.Group"]],
-                        cleaing_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
+                        cleaning_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
                         # 我知道cleaning拼错了，但是改不了了。。。。
                         homework_rules:  Optional[Union[Dict[str, "ClassObj.HomeworkRule"], OrderedKeyList["ClassObj.HomeworkRule"]]] = None):
                 """
@@ -839,7 +840,7 @@ class ClassObj(Base):
                 :param owner: 班主任
                 :param students: 学生列表
                 :param key: 在self.classes中对应的key
-                :param cleaing_mapping: 打扫卫生人员的映射
+                :param cleaning_mapping: 打扫卫生人员的映射
                 :param homework_rules: 作业规则
                 """
                 self.name     = name
@@ -847,11 +848,11 @@ class ClassObj(Base):
                 self.groups   = groups
                 self.students = students
                 self.key      = key
-                self.cleaing_mapping = cleaing_mapping if cleaing_mapping is not None else {}
+                self.cleaning_mapping = cleaning_mapping if cleaning_mapping is not None else {}
                 self.homework_rules = OrderedKeyList(homework_rules) if homework_rules is not None else OrderedKeyList([])
 
             def __repr__(self):
-                return f"Class(name={self.name.__repr__()}, owner={self.owner.__repr__()}, students={self.students.__repr__()}, key={self.key.__repr__()}, cleaing_mapping={self.cleaing_mapping.__repr__()})"
+                return f"Class(name={self.name.__repr__()}, owner={self.owner.__repr__()}, students={self.students.__repr__()}, key={self.key.__repr__()}, cleaning_mapping={self.cleaning_mapping.__repr__()})"
 
 
             @property 
@@ -967,7 +968,7 @@ class ClassObj(Base):
                         "onwer":       self.owner,
                         "students":  [s.uuid for s in self.students.values()],
                         "groups":    [g.uuid for g in self.groups.values()],
-                        "cleaing_mapping": [(k, [(t, [_s.uuid for _s in s]) for t, s in v.items()]) for k, v in self.cleaing_mapping.items()],
+                        "cleaning_mapping": [(k, [(t, [_s.uuid for _s in s]) for t, s in v.items()]) for k, v in self.cleaning_mapping.items()],
                         "homework_rules": {n: t.uuid for n, t in self.homework_rules.items()}
                     }
                 )

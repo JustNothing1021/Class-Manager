@@ -142,37 +142,37 @@ class ClassObj(ClassObj):
             import errno
             if isinstance(e, OSError):
                 if e.errno == errno.EACCES:
-                    QMessageBox.critical(None, "出错了！", f"没有权限读取文件[{path}]，请检查文件权限")
+                    QMessageBox.critical(None, "出错了！", f"没有权限读取文件[{path}]，请检查文件权限" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
                 elif e.errno == errno.EPERM:
-                    QMessageBox.critical(None, "出错了！", f"没有权限读文件[{path}]，请检查文件权限")
+                    QMessageBox.critical(None, "出错了！", f"没有权限读文件[{path}]，请检查文件权限" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 elif e.errno == errno.EISDIR:
-                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个目录，请检查文件路径")
+                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个目录，请检查文件路径" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 elif e.errno == errno.ENOSPC:
-                    QMessageBox.critical(None, "出错了！", f"磁盘空间不足，无法读取文件[{path}]，请清理后重新尝试")
+                    QMessageBox.critical(None, "出错了！", f"磁盘空间不足，无法读取文件[{path}]，请清理后重新尝试" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 elif e.errno == errno.ENOENT:
                     Base.log("W", "文件不存在，可能是首次加载，重置所有数据", "MainThread.load_data")
 
                 elif e.errno == errno.EMFILE:
-                    QMessageBox.critical(None, "出错了！", f"打开文件过多，无法读取文件[{path}]")
+                    QMessageBox.critical(None, "出错了！", f"打开文件过多，无法读取文件[{path}]" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 elif e.errno == errno.EIO:
-                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生I/O错误")
+                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生I/O错误" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 elif e.errno == errno.EBADF:
-                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个无效的文件描述符")
+                    QMessageBox.critical(None, "出错了！", f"文件[{path}]是一个无效的文件描述符" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
 
                 else:
-                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生未知错误：\n{traceback.format_exc()}")
+                    QMessageBox.critical(None, "出错了！", f"读取文件[{path}]时发生未知错误：\n{traceback.format_exc()}" + f"\n[{e.__class__.__name__}] {e}")
                     os._exit(1)
                 
 
@@ -214,7 +214,7 @@ class ClassObj(ClassObj):
 
         for c in copy.deepcopy(self.classes).keys():   # 重置班级信息
             if c in DEFAULT_CLASSES:
-                self.classes[c].cleaing_mapping = DEFAULT_CLASSES[c].cleaing_mapping # 复原默认卫生打扫规则
+                self.classes[c].cleaning_mapping = DEFAULT_CLASSES[c].cleaning_mapping # 复原默认卫生打扫规则
                 self.classes[c].homework_rules  = DEFAULT_CLASSES[c].homework_rules # 作业规则
                 self.classes[c].name            = DEFAULT_CLASSES[c].name   # 班级名
                 self.classes[c].owner           = DEFAULT_CLASSES[c].owner  # 班主任
@@ -289,7 +289,6 @@ class ClassObj(ClassObj):
             =  OrderedKeyList(data["templates"])
 
 
-
             
         achievements = copy.deepcopy(self.achievement_templates)
         for key, achievement in achievements.items():
@@ -323,6 +322,7 @@ class ClassObj(ClassObj):
         for key_class, _class in self.classes.items():
             for attr, default in [
                 ("homework_rules", (DEFAULT_CLASSES[key_class].homework_rules) if key_class in DEFAULT_CLASSES else {}),
+                ("cleaning_mapping", (getattr(_class, "cleaing_mapping", {})))  # 因为以前的版本是写错了的，所以这里需要特殊处理
             ]:
                 if not hasattr(_class, attr):
                     try:

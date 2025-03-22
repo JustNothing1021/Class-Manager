@@ -921,113 +921,117 @@ class Base(Object):
         lt = time.localtime()
         return F"{lt.tm_year}-{lt.tm_mon:02}-{lt.tm_mday:02} {lt.tm_hour:02}:{lt.tm_min:02}:{lt.tm_sec:02}.{int((time.time()%1)*1000):03}"
 
-    @staticmethod
-    def log_1(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
+
+    if log_style == "new":
+        @staticmethod
+        def log(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
+                    """
+                    向控制台和日志输出信息
+                    :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
+                    :param msg: 日志消息
+                    :param source: 日志来源
+                    """
+                    # 如果日志等级太低就不记录
+                    if (msg_type == "D" and Base.log_level not in ("D"))                \
+                            or (msg_type == "I" and Base.log_level not in ("D", "I"))            \
+                            or (msg_type == "W" and Base.log_level not in ("D", "I", "W"))        \
+                            or (msg_type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
+                            or (msg_type == "F" or msg_type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
+                        return
+
+                    if not isinstance(msg, str):
+                        msg = msg.__repr__()
+                    for m in msg.splitlines():
+                        if not m.strip():
+                            continue
+                        frame = inspect.currentframe()
+                        file = frame.f_back.f_code.co_filename.replace(cwd, "")
+                        if file == "<string>":
+                            lineno = 0
+                        if file.startswith(("/", "\\")):
+                            file = file[1:]
+                        frame = inspect.currentframe()
+                        caller_frame = frame.f_back
+                        # caller_function = caller_frame.f_code.co_name
+                        # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
+                        # if not (caller_function == 'write' or caller_function == 'writelines'):
+                        log_level = {
+                            "I": "INFO",
+                            "W": "WARNING",
+                            "E": "ERROR",
+                            "F": "CRITICAL",
+                            "C": "CRITICAL",
+                            "D": "DEBUG"
+                        }.get(msg_type, "INFO")
+
+                        # 避免日志套娃，只在loguru中记录一次
+
+                        # 据我所知，用python的dict.get好像会比if-else慢一点，可以试着考虑改回来
+
+                        # 其实不需要考虑这些，只要一开始就给log写到原始输出而不是sys.stdout就行了
+                        filename = (caller_frame.f_code.co_filename)
+                        file_basename = os.path.basename(filename)
+                        # func_name = caller_frame.f_code.co_name
+                        lineno = caller_frame.f_lineno
+                        logger.bind(file=file_basename, 
+                                    source=source, 
+                                    lineno=lineno, 
+                                    full_file=file, 
+                                    source_with_lineno=f"{source}:{lineno}").log(log_level, m)
+                        short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
+                        Base.short_log_info.append(short_info)
+                        short_info = short_info[-Base.short_log_keep_length:]
+                        Base.logged_count += 1
+    else:
+        @staticmethod
+        def log(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
                 """
                 向控制台和日志输出信息
-                :param level: 日志级别 (I=INFO, W=WARNING, E=ERROR, F=CRITICAL, D=DEBUG, C=CRITICAL)
-                :param msg: 日志消息
-                :param source: 日志来源
-                """
-                # 如果日志等级太低就不记录
-                if (msg_type == "D" and Base.log_level not in ("D"))                \
-                        or (msg_type == "I" and Base.log_level not in ("D", "I"))            \
-                        or (msg_type == "W" and Base.log_level not in ("D", "I", "W"))        \
-                        or (msg_type == "E" and Base.log_level not in ("D", "I", "W", "E"))    \
-                        or (msg_type == "F" or msg_type == "C" and Base.log_level not in ("D", "I", "W", "E", "F", "C")):
-                    return
 
+                :param type: 类型
+                :param msg: 信息
+                :param send: 发送者
+                :return: None
+                """
                 if not isinstance(msg, str):
                     msg = msg.__repr__()
                 for m in msg.splitlines():
+                    if msg_type == "I":
+                        color = Color.GREEN
+                    elif msg_type == "W":
+                        color = Color.YELLOW
+                    elif msg_type == "E":
+                        color = Color.RED
+                    elif msg_type == "F" or msg_type == "C":
+                        color = Color.MAGENTA
+                    elif msg_type == "D":
+                        color = Color.CYAN
+                    else:
+                        color = Color.WHITE
+                    
                     if not m.strip():
                         continue
                     frame = inspect.currentframe()
+                    lineno = frame.f_back.f_lineno
                     file = frame.f_back.f_code.co_filename.replace(cwd, "")
                     if file == "<string>":
                         lineno = 0
                     if file.startswith(("/", "\\")):
                         file = file[1:]
-                    frame = inspect.currentframe()
-                    caller_frame = frame.f_back
-                    # caller_function = caller_frame.f_code.co_name
-                    # 如果不是从SystemLogger的function回调中调用的，才使用loguru记录日志
-                    # if not (caller_function == 'write' or caller_function == 'writelines'):
-                    log_level = {
-                        "I": "INFO",
-                        "W": "WARNING",
-                        "E": "ERROR",
-                        "F": "CRITICAL",
-                        "C": "CRITICAL",
-                        "D": "DEBUG"
-                    }.get(msg_type, "INFO")
-                    # 避免日志套娃，只在loguru中记录一次
-
-                    # 其实不需要考虑这些，只要一开始就给log写到原始输出而不是sys.stdout就行了
-                    filename = (caller_frame.f_code.co_filename)
-                    file_basename = os.path.basename(filename)
-                    # func_name = caller_frame.f_code.co_name
-                    lineno = caller_frame.f_lineno
-                    logger.bind(file=file_basename, 
-                                source=source, 
-                                lineno=lineno, 
-                                full_file=file, 
-                                source_with_lineno=f"{source}:{lineno}").log(log_level, m)
+                    cm = f"{Color.BLUE}{Base.gettime()}{Color.END} {color}{msg_type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
+                    # lm = f"{Base.gettime()} {msg_type} {(source).ljust(35)} {m}" 
+                    lfm = f"{Base.gettime()} {msg_type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
+                    # Base.window_log_queue.put(lm)
+                    Base.console_log_queue.put(cm)
+                    Base.logfile_log_queue.put(lfm)
+                    # Base.log_file.write(lfm + "\n")
+                    # print(lfm, file=Base.fast_log_file)2
+                    # Base.log_file.flush()
                     short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
                     Base.short_log_info.append(short_info)
-                    short_info = short_info[-Base.short_log_keep_length:]
+                    Base.short_log_info = Base.short_log_info[-Base.short_log_keep_length:]
                     Base.logged_count += 1
 
-    @staticmethod
-    def log_2(msg_type:Literal["I", "W", "E", "F", "D", "C"], msg:str, source:str="MainThread"):
-            """
-            向控制台和日志输出信息
-
-            :param type: 类型
-            :param msg: 信息
-            :param send: 发送者
-            :return: None
-            """
-            if not isinstance(msg, str):
-                msg = msg.__repr__()
-            for m in msg.splitlines():
-                if msg_type == "I":
-                    color = Color.GREEN
-                elif msg_type == "W":
-                    color = Color.YELLOW
-                elif msg_type == "E":
-                    color = Color.RED
-                elif msg_type == "F" or msg_type == "C":
-                    color = Color.MAGENTA
-                elif msg_type == "D":
-                    color = Color.CYAN
-                else:
-                    color = Color.WHITE
-                
-                if not m.strip():
-                    continue
-                frame = inspect.currentframe()
-                lineno = frame.f_back.f_lineno
-                file = frame.f_back.f_code.co_filename.replace(cwd, "")
-                if file == "<string>":
-                    lineno = 0
-                if file.startswith(("/", "\\")):
-                    file = file[1:]
-                cm = f"{Color.BLUE}{Base.gettime()}{Color.END} {color}{msg_type}{Color.END} {Color.from_rgb(50, 50, 50)}{source.ljust(35)}{color} {m}{Color.END}"
-                # lm = f"{Base.gettime()} {msg_type} {(source).ljust(35)} {m}" 
-                lfm = f"{Base.gettime()} {msg_type} {(source + f' -> {file}:{lineno}').ljust(60)} {m}"
-                # Base.window_log_queue.put(lm)
-                Base.console_log_queue.put(cm)
-                Base.logfile_log_queue.put(lfm)
-                # Base.log_file.write(lfm + "\n")
-                # print(lfm, file=Base.fast_log_file)2
-                # Base.log_file.flush()
-                short_info = f"{time.strftime('%H:%M:%S', time.localtime())} {msg_type} {m}"
-                Base.short_log_info.append(short_info)
-                Base.short_log_info = Base.short_log_info[-Base.short_log_keep_length:]
-                Base.logged_count += 1
-
-    log: Callable[[Literal["I", "W", "E", "F", "D", "C"], str, str], None] = log_2 if log_style == "old" else log_1
 
     @staticmethod
     def log_thread_logfile():
@@ -1078,33 +1082,7 @@ class Base(Object):
     #         for f in log_files[keep_count:]:
     #             os.remove(os.path.join(os.path.dirname(LOG_FILE_PATH), f))
     
-    @staticmethod
-    def read_ini(filepath:str="options.ini",encoding="utf-8",nospace:bool=True) -> Union[int,Dict[str,Union[bool,str]]]:
-        """读取一个写满了<变量名>=<值>的文本文件然后返回一个字典
-        
-        :param filepath: 文件路径
-        :param encoding: 编码
-        :param nospace: 是否去除空格
-        :return: 一个dict
-        """
-        reading_file = open(filepath,encoding=encoding,mode="r",errors="ignore")
-        content = reading_file.readlines()
-        reading_file.close()
-        if len(content) == 0:
-            return {}
-        output = {}
-        for i in range(len(content)):
-            try:
-                line_setting = str(content[i]).split("=",2)
-                prop = str(line_setting[0])   
-                value = line_setting[1].split("\n",1)[0]
-                if nospace:value = value.replace(" ","")
-                if value.upper() == "FALSE": value = False
-                if value.upper() == "TRUE":  value = True
-                output[prop]=value
-            except:
-                continue
-        return output  
+
 
     @staticmethod
     def log_exc(info:str="未知错误：", 
@@ -1138,8 +1116,10 @@ class Base(Object):
                 return
         Base.log(level, f"{info} [{exc.__class__.__qualname__}] {exc}", sender)
 
-Base.console_log_thread.start()
-Base.logfile_log_thread.start()
+if log_style == "old":
+    # 性能能省一点是一点
+    Base.console_log_thread.start()
+    Base.logfile_log_thread.start()
 
 
 class SupportsKeyOrdering(ABC):
@@ -1164,7 +1144,7 @@ class SupportsKeyOrdering(ABC):
         ...     def __init__(self, key: str):
         ...         self.key = key      # 在一个OrderedKeyList里面每一个元素都有自己的key
         ...                             # 至于这个key表示的是什么就由你来决定了
-        >>>                             # 但是但是，这个key只能是str，因为int拿来做索引值了，float和tuple元组)之类的懒得写
+        >>>                             # 但是但是，这个key只能是str，因为int拿来做索引值了，float和tuple(元组)之类的懒得写
 
 
         以前以来我们都用``collections.OrderedDict``来寻找模板，比如这样

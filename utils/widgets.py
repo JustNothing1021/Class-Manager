@@ -381,7 +381,7 @@ class SideNotice(QWidget):
         self.timer.timeout.connect(self.notice_close)
         QCoreApplication.processEvents()
 
-    @Slot()
+    # @Slot()
     def notice_close(self):
         if self in SideNotice.showing:
             SideNotice.showing.remove(self)
@@ -401,7 +401,7 @@ class SideNotice(QWidget):
         self.timer2.timeout.connect(self.notice_exit)
         QCoreApplication.processEvents()
 
-    @Slot()
+    # @Slot()
     def notice_exit(self):
         self.master.sidenotice_avilable_slots.append(self.slot)
         self.timer2.stop()

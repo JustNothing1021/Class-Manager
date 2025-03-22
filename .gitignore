@@ -160,3 +160,4 @@ cython_debug/
 /_internal
 /user_info.*
 /last_usr.*
+/complie.conf

@@ -2,6 +2,7 @@ import cv2
 import pygame
 import sys
 import time
+import functools
 from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtWidgets import QMessageBox
 from typing import Callable, Literal
@@ -124,6 +125,7 @@ def pass_exceptions(func):
 
 
     """
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

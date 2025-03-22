@@ -249,7 +249,7 @@ DEFAULT_CLASSES: OrderedKeyList[Class] = OrderedKeyList([
 ])
 """默认班级"""
 
-DEFAULT_CLASSES["CLASS_TEST"].cleaing_mapping = {
+DEFAULT_CLASSES["CLASS_TEST"].cleaning_mapping = {
     
     1: {
             "member" : [
