@@ -28,7 +28,11 @@ import json
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from types import TracebackType, FrameType
-from utils.consts import log_style
+try:
+    from utils.consts import log_style
+except ImportError:
+    # traceback.print_exc()
+    from consts import log_style
 
 
 try:
@@ -99,17 +103,17 @@ def get_function_namespace(func) -> str:
     if not hasattr(func, "__module__"):
         try:
             return func.__qualname__
-        except:
+        except BaseException:
             try:
                 return func.__name__
-            except:
+            except BaseException:
                 if isinstance(func, property):
                     return str(func.fget.__qualname__)
                 elif isinstance(func, classmethod):
                     return str(func.__func__.__qualname__)
                 try:
                     return func.__class__.__qualname__
-                except:
+                except BaseException:
                     return func.__class__.__name__            
     if module is None:
         module_name = func.__self__.__module__ if hasattr(func, "__self__") else func.__module__
@@ -168,7 +172,7 @@ def cinttype(dtype: _cinttype, name: Optional[str] = None):
         def __init__(self, value: _cinttype):
             try:
                 value = int(value)
-            except:
+            except BaseException:
                 value = int(value.value)
 
             self._dtype: _cinttype = dtype
@@ -423,9 +427,6 @@ debug = True
 
 
 
-function = type(lambda: None)
-"""函数类型对象，用于类型检查"""
-
 
 SOUND_BRUH = os.getcwd() + "/res/sounds/bruh.mp3"
 """提示音效文件路径"""
@@ -464,7 +465,6 @@ stderr_orig = sys.stderr
 
 NoneType = type(None)
 
-function = Callable
 
 
 
@@ -589,6 +589,7 @@ class ModifyingError(Exception):"修改出现错误。"
 import colorama
 
 colorama.init(autoreset=True)
+
 class Color:
     """颜色类（给终端文字上色的）
     
@@ -702,11 +703,10 @@ def gen_uuid(len: int = 32) -> str:
 def sep_uuid(uuid, sep: str = "/", length: int = 8) -> str:
     return sep.join([uuid[i:i+length] for i in range(0, len(uuid), length)])
 
+
 class Object(object):
     "一个基础类"
 
-    # def __init__(self):
-    #     self._uuid = gen_uuid()
 
     @property
     def uuid(self):
@@ -1421,3 +1421,6 @@ class OrderedKeyList(list, Iterable[_Template]):
         "返回列表的表达式"
         return F"OrderedTemplateGroup({super().__repr__()})"
     
+
+if __name__ == "__main__":
+    print("你闲的没事跑这玩意干啥")

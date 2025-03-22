@@ -83,7 +83,7 @@ def _play_sound(filename, volume=1, loop:int=0, fade_ms:int=0):
         sound = pygame.mixer.Sound(filename)
         sound.set_volume(volume)
         sound.play(loops=loop, fade_ms=fade_ms)
-    except:
+    except BaseException:
         Base.log_exc("播放声音失败")
 
 
@@ -100,7 +100,7 @@ def play_music(filename:str, volume:float=0.5, loop:int=0, fade_ms:int=0):
         pygame.mixer.music.load(filename)
         pygame.mixer.music.set_volume(volume)
         pygame.mixer.music.play(loops=loop, fade_ms=fade_ms)
-    except:
+    except BaseException:
         Base.log_exc("播放音乐失败")
 
 def stop_music():
@@ -120,7 +120,7 @@ def canbe(value, _class:type):
     try:
         _class(value)
         return True
-    except:
+    except BaseException:
         return False
 
 
@@ -156,7 +156,7 @@ def pass_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except:
+        except BaseException:
             Base.log_exc(f"执行函数{repr(func.__name__)}时捕获到异常", f"pass_exceptions -> {func.__name__}")
 
     return wrapper

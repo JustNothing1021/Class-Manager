@@ -335,7 +335,7 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 #         if slot == -1 and hasattr(self.master, 'sidenotice_avilable_slots') and len(self.master.sidenotice_avilable_slots) > 0:
 #             try:
 #                 self.slot = self.master.sidenotice_avilable_slots.pop(0)
-#             except:
+#             except BaseException:
 #                 Base.log_exc("获取槽位失败")
         
 #         self.is_waiting = False
@@ -502,12 +502,12 @@ class SideNotice(QWidget):
                         #         SideNotice.waiting[0].show()
                             
                         QCoreApplication.processEvents()
-                    except:
+                    except BaseException:
                         pass
                     if self.slot != -1:
                         # Base.log("D", F"{self.index}号提示分配到槽位：{self.slot}", "SideNotice.show")
                         break
-            except:
+            except BaseException:
                 Base.log_exc("显示提示失败")
         
         self.is_waiting = False

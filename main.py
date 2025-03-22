@@ -113,7 +113,6 @@ def exception_handler(exc_type: Optional[Type[BaseException]] = None,
         for i in range(total):
             currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
             QMessageBox.critical(parent, "错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
-    sys.exit(1)
     
 
 sys.excepthook       = exception_handler
@@ -1868,7 +1867,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
         Base.log("I", "准备每日结算", "MainWindow.day_end")
         yesterday = Day(
-            self.classes,  
+            self.target_class,  
             weekday,
             utc,
             self.current_day_attendance
@@ -4954,17 +4953,14 @@ import math
 print(math.sqrt(114514))""", "计算114514的平方根"),
             ("""\
 DataObject.saved_objects = 0
-Chunk.use_threadpool = True
-Chunk.min_task_per_thread = 200
-Chunk.max_task_per_thread = 500
 c = Chunk("chunks/test_chunk/example", self.database)
 t = time.time()
-c.save(1)
+c.save()
 print("时间:", time.time() - t)
 print("数量:", DataObject.saved_objects)
 print("速率:", (DataObject.saved_objects / (time.time() - t)))""", "测试保存数据分组"),
 
-("""
+("""\
 for _ in range(114):
     self.send_modify("wearing_bad", list(self.target_class.students.values()))
 """, "大数据测试")

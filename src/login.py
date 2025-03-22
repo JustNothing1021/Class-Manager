@@ -1,5 +1,5 @@
 
 try:
     from utils.login import * 
-except:
+except BaseException:
     from utils.bak.login import *

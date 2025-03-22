@@ -464,7 +464,7 @@ class Connection:
             try:
                 self.send_rawdata_to(datapack.to_string(), addr, port, timeout)
                 return True
-            except:
+            except BaseException:
                 if errors == "log":
                     Base.log_exc("E", f"向{'[' if connection_mode == 'ipv6' else ''}{addr}{']' if connection_mode == 'ipv6' else ''}发送数据失败", "Connection.send_datapack_to", "W")
                 return False
@@ -510,7 +510,7 @@ class Connection:
         else:
             try:
                 return self.recv_rawdata_as(self.self_addr, self.self_port, self.timeout if not timeout else timeout, return_addr=return_addr)
-            except:
+            except BaseException:
                 if errors == "log":
                     Base.log(f"从{self.target_addr}:{self.target_port}接收数据失败", "Connection.recv_raw", "W")
                 return None
@@ -707,7 +707,7 @@ class Server(Connection):
             Base.log("W", f"{'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port}的连接已断开，发送ServerDisconnect", "Connection.Server.keep_alive_check")
             try:
                 self.send_to_client(client, SocketMsg.Connection.ServerDisconnect, "", timeout=1)
-            except:
+            except BaseException:
                 Base.log("W", f"{'[' if connection_mode == 'ipv6' else ''}{client.addr}:{client.port}{']' if connection_mode == 'ipv6' else ''}连ServerDisconnect也没接，多半似掉了", "Connection.Server.keep_alive_check")
             Base.log("W", f"{'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port}的连接已断开", "Connection.Server.keep_alive_check")
             self.processing_clients.remove(client)
@@ -739,13 +739,13 @@ class Server(Connection):
                                      f"向{'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port}"
                                      "发送ClientKeepAliveCheckReply成功", "Server.wait_for_client_keepalive_check")
                             return
-                        except:
+                        except BaseException:
                             Base.log_exc_short(f"向{'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port}"
                                      F"发送ClientKeepAliveCheckReply失败（{i+1} / {retry}）", "Server.wait_for_client_keepalive_check")
                     Base.log("W", f"{'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port}"
                                   f"在ClientKeepAliveCheck中自己断开连接了，不管它")
                 Thread(target=lambda client=client, f=send: f(client), name=F"ClientKeepAliveCheckHandler({'[' if connection_mode == 'ipv6' else ''}{client.addr}{']' if connection_mode == 'ipv6' else ''}:{client.port})").start()
-            except:
+            except BaseException:
                 Base.log_exc("等待ClientKeepAliveCheck时出现错误", "Server.wait_for_client_keepalive_check")
 
 
@@ -829,7 +829,7 @@ class Client(Connection):
             self.connected = False
             return False
         
-        except:
+        except BaseException:
             Base.log_exc(f"连接服务器{self.server_addr}:{self.server_port}失败，发生未知错误", "Connection.Client.connect")
 
 
@@ -854,7 +854,7 @@ class Client(Connection):
             Base.log("I", "向服务器发送ClientKeepAliveCheck", "Client.check_server_connection")
             try:
                 self.send_request(SocketMsg.Connection.ClientKeepAliveCheck, "")
-            except:
+            except BaseException:
                 Base.log_exc_short("发送ClientKeepAliveCheck失败: ", "Client.check_server_connection")
                 Base.log("W", F"进行重试 ({i+1} / {retry})")
                 continue
@@ -862,7 +862,7 @@ class Client(Connection):
                 resp = self.get_request(SocketMsg.Connection.ClientKeepAliveCheckReply, 1)
                 Base.log("I" , F"收到了服务器的ClientKeepAliveCheckReply (内容：{resp.data})，连接继续", "Client.check_server_connection")
                 return True
-            except:
+            except BaseException:
                 Base.log("W", "在1秒内没有收到服务器的ClientKeepAliveCheckReply...", "Client.check_server_connection")
         Base.log("W", "检查连接失败", "Client.check_server_connection")
         return False
@@ -877,7 +877,7 @@ class Client(Connection):
                     Base.log("W", "服务器未响应，尝试断开连接")
                     try:
                         self.send_request(SocketMsg.Connection.ClientDisconnect, "")
-                    except:
+                    except BaseException:
                         Base.log_exc_short("发送断开连接请求失败：")
                     Base.log("I", "询问是否尝试重连")
                     self.connected = False

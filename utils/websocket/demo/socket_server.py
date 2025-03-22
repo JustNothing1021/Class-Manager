@@ -11,6 +11,6 @@ for addr in [address_ipv6] + [addr[4][0] for addr in socket.getaddrinfo(socket.g
         server_114514 = SocketDemo(addr, random_port)
         print(f"服务器在[{addr}]:{random_port}上开启！")
         server_114514.run_as_server()
-    except:
+    except BaseException:
         print(f"服务器在[{addr}]:{random_port}上开启失败！")
 

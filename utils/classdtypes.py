@@ -1,4 +1,5 @@
 from utils.basetypes import * # 导入所有基础类型(lazy)
+
 import base64
 
 def get_random_template(templates: "OrderedKeyList[ClassObj.ScoreModificationTemplate]"):
@@ -93,7 +94,8 @@ class ClassObj(Base):
 
             chunk_type_name: Literal["Student"] = "Student"
 
-            score_dtype = HighPrecision
+            # score_dtype = HighPrecision
+            score_dtype = int8
             "记录分数的数据类型（还没做完别乱改）"
 
             def __init__(self, 
@@ -677,7 +679,7 @@ class ClassObj(Base):
                     self.target.history[self.execute_time_key] = self
                     return True
 
-                except:
+                except BaseException:
                     if debug:
                         raise
                     Base.log("E","执行时出现错误：\n\t\t"+("\t"*2).join(str(traceback.format_exc()).splitlines(True)).strip(),"ScoreModification.execute")
@@ -756,7 +758,7 @@ class ClassObj(Base):
                         self.execute_time = None
                         del self
                         return True, "操作成功完成"
-                    except:
+                    except BaseException:
                         if debug:raise
                         Base.log("E","执行时出现错误：\n\t\t"+("\t"*2).join(str(traceback.format_exc()).splitlines(True)).strip(),"ScoreModification.retract")
                         return False, "执行时出现不可预测的错误"
@@ -959,6 +961,8 @@ class ClassObj(Base):
 
 
             def to_string(self) -> str:
+                if hasattr(self, "cleaing_mapping") and not hasattr(self, "cleaning_mapping"):  # 也是因为之前的拼写错误
+                    self.cleaning_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = getattr(self, "cleaing_mapping")
                 return json.dumps(
                     {
                         "type":      self.chunk_type_name,
@@ -1150,7 +1154,7 @@ class ClassObj(Base):
                         r = lowest_rank + self.score_rank_up_limit + 1 if self.score_rank_up_limit < 0 else self.score_rank_up_limit
                         if not (l <= [i[0] for i in class_obs.rank_dumplicate if i[1].num == student.num][0] <= r):
                             return False
-                except:
+                except BaseException:
                     return False
                 if hasattr(self, "highest_score_down_limit") and not self.highest_score_down_limit <= student.highest_score <= self.highest_score_up_limit:return False
                 if hasattr(self, "highest_score_cause_range_down_limit") and not self.highest_score_cause_range_down_limit <= student.highest_score_cause_time <= self.highest_score_cause_range_up_limit:return False
@@ -1158,7 +1162,7 @@ class ClassObj(Base):
                 if hasattr(self, "lowest_score_cause_range_down_limit") and not self.lowest_score_cause_range_down_limit <= student.lowest_score_cause_time <= self.lowest_score_cause_range_up_limit:return False
                 try:
                     if hasattr(self, "modify_ranges") and not all([item["lowest"] <= [history.temp.key for history in student.history.values() if history.executed].count(item["key"]) <= item["highest"] for item in self.modify_ranges]):return False
-                except:
+                except BaseException:
                     return False
                 
     
@@ -1170,7 +1174,7 @@ class ClassObj(Base):
                                                                             achievement_obs=class_obs.base.achievement_obs
                                                                             )) for func in self.other]):
                             return False
-                    except:
+                    except BaseException:
                         Base.log_exc(f"位于成就{self.name}({self.key})的lambda函数出错：", "AchievementTemplate.achieved")
                         if self.key in class_obs.base.DEFAULT_ACHIEVEMENTS:
                             self.other = class_obs.base.DEFAULT_ACHIEVEMENTS[self.key].other
@@ -1466,6 +1470,8 @@ class ClassObj(Base):
             self.target_class = target_class
 
         def to_string(self):
+            if isinstance(self.target_class, dict):
+                self.target_class = self.target_class[self.target_class.keys()[0]]
             return json.dumps(
                 {
                     "type":             self.chunk_type_name,
@@ -1505,7 +1511,6 @@ class ClassObj(Base):
                 }
             )
         
-
 
 
 class ClassStatusObserver(Object):
@@ -1606,4 +1611,4 @@ default_achievement_template = AchievementTemplate("如果你看到了这行信�
                                                    "这个成就正如字面意思，是不可能达成的", 
                                                    condition_info="别看了，不可能达成就是不可能达成", 
                                                    further_info="我触发条件都写的lambda: 0.1 + 0.2 == 0.3，怎么可能达成", 
-                                                   others=lambda: 0.1 + 0.2 == 0.3) # 浮点数精度测试，disable-python:S1244
+                                                   others=lambda: 0.1 + 0.2 == 0.3) # NOSONAR; disable-python:S1244(浮点数精度测试，纯闲的)

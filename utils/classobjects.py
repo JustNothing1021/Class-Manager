@@ -41,7 +41,7 @@ CORE_VERSION_CODE = VERSION_INFO["core_version_code"]
 try:
     from utils.default import (DEFAULT_ACHIEVEMENTS,
                             DEFAULT_CLASSES, DEFAULT_SCORE_TEMPLATES, default_class_key)
-except:
+except BaseException:
     from utils.bak.default import (DEFAULT_ACHIEVEMENTS,
                             DEFAULT_CLASSES, DEFAULT_SCORE_TEMPLATES, default_class_key)
     warnings.warn("没有检测到utils/default.py，"
@@ -117,7 +117,7 @@ class ClassObj(ClassObj):
                 data = pickle_orig.load(open(path + ".tmp", "rb"))
             try:
                 os.remove(path+".tmp")
-            except:
+            except BaseException:
                 pass
             if not silent:
                 Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
@@ -498,7 +498,7 @@ class ClassObj(ClassObj):
 
             Base.log("I","保存数据到"+path+f"完成，总时间：{time.time()-st:.3f}","MainThread.save_data_strict")
 
-        except:
+        except BaseException:
             Base.log_exc("保存存档"+path+"失败：", "Mainhread.save_data_strict")
             raise
 
@@ -641,7 +641,7 @@ class ClassObj(ClassObj):
         try:
             self.findstu(identifier, from_class)
             return True
-        except:
+        except BaseException:
             return False
 
 
@@ -678,7 +678,7 @@ class ClassObj(ClassObj):
             self.modify_templates[key] = ClassObj.ScoreModificationTemplate(key, value, title, description)
             Base.log("I","新建成功","MainThread.add_template")
             return True
-        except:
+        except BaseException:
             Base.log_exc("新建模板失败:","MainThread.add_template")
             return False
 
@@ -706,7 +706,7 @@ class ClassObj(ClassObj):
             del self.modify_templates[key]
             Base.log("I",f"模板{key}删除完毕!","MainThread.del_template")
             return orig
-        except:
+        except BaseException:
             Base.log_exc("新建模板失败:","MainThread.del_template")
             raise
 
@@ -731,7 +731,7 @@ class ClassObj(ClassObj):
             self.classes[key] = ClassObj.Class(name, owner, students)
             Base.log("I",f"班级{name}新建完毕!","MainThread.add_class")
             return True
-        except:
+        except BaseException:
             Base.log_exc("新建班级失败:","MainThread.class")
             raise
 
@@ -753,7 +753,7 @@ class ClassObj(ClassObj):
             del self.classes[key]
             Base.log("I",f"班级{key}删除完毕!","MainThread.del_class")
             return class_orig
-        except:
+        except BaseException:
             Base.log_exc("新建班级失败:","MainThread.del_class")
             raise
 
@@ -785,7 +785,7 @@ class ClassObj(ClassObj):
             self.classes[to_class].students[num] = ClassObj.Student(name, num, init_score, to_class, {})
             Base.log("I",f"学生{name}新建完毕!","MainThread.add_student")
             return True
-        except:
+        except BaseException:
             Base.log_exc("新建学生失败:","MainThread.add_student")
             raise
 
@@ -804,7 +804,7 @@ class ClassObj(ClassObj):
         Base.log("I",f"正在删除学生{identifier}, 原因：{reason}","MainThread.del_student")
         try:
             stuobj = self.findstu(identifier,from_class)
-        except:
+        except BaseException:
             Base.log("W","指定的学生不存在, 无需操作! 信息："+repr(sys.exc_info()[1]),"MainThread.del_student")
             return
         try:
@@ -812,7 +812,7 @@ class ClassObj(ClassObj):
             del self.classes[from_class].students[stuobj.num]
             Base.log("I",f"学生{stuobj.name}删除完毕!","MainThread.del_student")
             return orig
-        except:
+        except BaseException:
             Base.log_exc("删除学生失败:","MainThread.del_student")
             raise
 
@@ -1141,15 +1141,15 @@ class ClassObj(ClassObj):
                         try:
                             self.load_data(path=self.save_path, silent=True, strict=True)
                             break
-                        except:
+                        except BaseException:
                             pass
                     Base.log("I", "自动保存完成", "class_window.auto_save")
 
-                except:
+                except BaseException:
                     Base.log_exc("自动保存失败", "class_window.auto_save", "W")
                 self.auto_saving = False
                 
-        except:
+        except BaseException:
             Base.log_exc("自动保存因错误而停止", "class_window.auto_save", "W")
 
     def find_with_uuid(self, uuid: str, find_class: Literal[
@@ -1285,7 +1285,7 @@ class ClassStatusObserver(Object):
             "上次更新时间"
             self.tps = tps
             "侦测器最大刷新率"
-        except:
+        except BaseException:
             Base.log_exc("获取班级信息失败", "ClassStatusObserver.__init__")
             raise ClassObj.ObserverError("获取班级信息失败")
 
