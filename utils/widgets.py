@@ -258,14 +258,13 @@ class ProgressAnimationTest(QMainWindow):
         text = item.text()
         QMessageBox.information(self, "选中项目", f"选中{text}，索引：{self.list_widget.row(item)}")
 
-# TODO: 把这个不明物体改成InfoBar
-class SideNotice(QWidget):
-    "侧边栏通知"
+from qfluentwidgets import InfoBar, InfoBarPosition
+
+class SideNotice:
+    "侧边栏通知，使用InfoBar实现"
     total = 0
     current = 0
     waiting:List["SideNotice"] = []
-    in_curve = QEasingCurve.Type.OutCubic
-    out_curve = QEasingCurve.Type.InQuad
     showing:List["SideNotice"] = []
     
 
@@ -283,39 +282,23 @@ class SideNotice(QWidget):
         :param closeable: 是否可关闭
         :param click_command: 点击命令
         """
-        super().__init__(master)
         self.closing = False
         self.notice_text = text
         self.index = SideNotice.total
         SideNotice.total += 1
         if self not in SideNotice.waiting:
             SideNotice.waiting.append(self)
-        self.label = QLabel(self)
-        self.setStyleSheet(QCoreApplication.translate("Form", "background-color: rgb(255, 255, 255); font: 8pt; border: 1px solid rgb(0, 0, 0);") + (
-            f"background-image: url({icon});  background-position: center; background-repeat: no-repeat;" if icon is not None else ""
-        ))
-        self.label.setStyleSheet(QCoreApplication.translate("Form", "background-color: rgb(255, 255, 255); font: 8pt;  border: 1px solid rgb(0, 0, 0);"))
-        self.label.setText(text)
-        self.label.setWordWrap(True)
-        self.setParent(master)
         self.master = master
         self.sound = sound
         self.icon = icon
         self.duration = duration
         self.slot = -1
         self.clicked = False
-        self.setFixedWidth(min(160 + max((len(text) - 10) * 8, 0), 240))
-        self.setFixedHeight(40)
-        self.label.setFixedWidth(min(160 + max((len(text) - 10) * 8, 0), 240))
-        self.label.setFixedHeight(40)
         self.closeable = closeable
         self.click_command = click_command
         self.is_showing = False
         self.is_waiting = False
-        if len(text) > 40 and zoom_text: # 如果文本过长就缩小字体
-            self.label.setStyleSheet(QCoreApplication.translate("Form", "background-color: rgb(255, 255, 255); font: 7pt; border: 1px solid rgb(0, 0, 0);"))
-        self.move(self.master.geometry().width(), 40)
-        super().show()
+        self.infobar = None
 
     def setSlot(self, slot: int):
         self.slot = slot
@@ -333,83 +316,87 @@ class SideNotice(QWidget):
         if slot is not None:
             self.slot = slot
         self.is_waiting = True
-        if slot == -1:
+        
+        # 简化槽位分配逻辑
+        if slot == -1 and hasattr(self.master, 'sidenotice_avilable_slots') and len(self.master.sidenotice_avilable_slots) > 0:
             try:
-                while self.master.is_running: # 等到主窗口有多余的槽位显示
-                    try:
-                        # minimized = self.master.isMinimized()
-                        # visible = self.master.isVisible()
-                        # first = SideNotice.current == self.index
-
-                        if len(self.master.sidenotice_avilable_slots):
-                            # Base.log("D", f"{self.index}尝试获取槽位", "SideNotice.show")
-                            self.slot = self.master.sidenotice_avilable_slots.pop(0)
-                        # else:
-                        #     if SideNotice.waiting != [] and not SideNotice.waiting[0].showing and all([SideNotice.waiting[0].index <= n.index for n in SideNotice.waiting]) and len(self.master.sidenotice_avilable_slots):
-                        #         SideNotice.waiting[0].show()
-                            
-                        QCoreApplication.processEvents()
-                    except:
-                        pass
-                    if self.slot != -1:
-                        # Base.log("D", F"{self.index}号提示分配到槽位：{self.slot}", "SideNotice.show")
-                        break
+                self.slot = self.master.sidenotice_avilable_slots.pop(0)
             except:
-                Base.log_exc("显示提示失败")
+                Base.log_exc("获取槽位失败")
         
         self.is_waiting = False
         self.is_showing = True
-        duration = 600 / SettingsInfo.current.animation_speed
-        Base.log("D", f"{self.index}号 (位于槽位{self.slot}) 侧边提示开始展示 (文本: {repr(self.notice_text)})", "SideNotice.show")
+        
+        # 记录日志
+        Base.log("D", f"{self.index}号侧边提示开始展示 (文本: {repr(self.notice_text)})", "SideNotice.show")
+        
+        # 更新列表状态
         if self in SideNotice.waiting:
             SideNotice.waiting.remove(self) 
         if self not in SideNotice.showing:
             SideNotice.showing.append(self)
         SideNotice.current = self.index + 1
-        self.startpoint = QPoint(self.master.geometry().width() + 20, self.slot * 40)
-        self.endpoint = QPoint(self.master.geometry().width() - self.width(), self.slot * 40)
-        self.timer = QTimer()
+        
+        # 播放声音
         if self.sound:
             Thread(target=lambda: play_sound(self.sound), daemon=True, name="SideNoticeSoundPlayer").start()
-        self.showanimation = QPropertyAnimation(self, b"pos")
-        self.showanimation.setStartValue(self.startpoint)
-        self.showanimation.setEndValue(self.endpoint)
-        self.showanimation.setEasingCurve(self.in_curve)
-        self.showanimation.setDuration(duration)
-        self.showanimation.start()
-        self.timer.start(duration + self.duration)
-        self.timer.timeout.connect(self.notice_close)
+        
+        # 创建并显示InfoBar
+        from qfluentwidgets import InfoBarIcon
+        
+        # 确定InfoBar图标类型
+        icon_type = InfoBarIcon.INFORMATION
+        
+        # 创建InfoBar
+        self.infobar = InfoBar.new(
+            icon=icon_type,
+            title="",
+            content=self.notice_text,
+            orient=Qt.Orientation.Horizontal,
+            isClosable=self.closeable,
+            duration=self.duration,
+            parent=self.master
+        )
+        
+        # 设置位置
+        # InfoBar没有setPosition方法，直接在创建时指定position参数
+        # 这里不需要额外设置位置，因为已经在InfoBar.new中设置了
+        
+        # 如果有点击命令，连接点击事件
+        if self.click_command and callable(self.click_command):
+            try:
+                # 尝试连接InfoBar的信号
+                # 由于不确定InfoBar具体有哪些可用信号，这里使用try-except处理
+                # 可能的信号包括：closeClicked, linkActivated等
+                self.infobar.closeClicked.connect(self.click_command)
+            except AttributeError:
+                # 如果没有可用的信号，记录一个警告但不中断程序
+                print(f"警告：InfoBar对象没有可用的点击信号，无法连接点击命令")
+        
+        # 显示InfoBar
+        self.infobar.show()
         QCoreApplication.processEvents()
 
     @Slot()
     def notice_close(self):
+        """关闭通知"""
         if self in SideNotice.showing:
             SideNotice.showing.remove(self)
         if self.closing:
             return
         self.closing = True
-        self.timer.stop()
-        duration = 800 / SettingsInfo.current.animation_speed
-        self.closeanimation = QPropertyAnimation(self, b"pos")
-        self.closeanimation.setStartValue(self.endpoint)
-        self.closeanimation.setEndValue(self.startpoint)
-        self.closeanimation.setEasingCurve(self.out_curve)
-        self.closeanimation.setDuration(duration)
-        self.closeanimation.start()
-        self.timer2 = QTimer()
-        self.timer2.start(duration + 5)
-        self.timer2.timeout.connect(self.notice_exit)
+        
+        # 如果InfoBar存在，关闭它
+        if self.infobar:
+            self.infobar.close()
+            self.infobar = None
+        
+        self.is_showing = False
+        
+        # 释放槽位
+        if hasattr(self.master, "sidenotice_avilable_slots") and self.slot != -1:
+            self.master.sidenotice_avilable_slots.append(self.slot)
+        
         QCoreApplication.processEvents()
-
-    @Slot()
-    def notice_exit(self):
-        self.master.sidenotice_avilable_slots.append(self.slot)
-        self.timer2.stop()
-        Base.log("D", f"位于槽位{self.slot}的侧边提示结束展示 (文本: {repr(self.notice_text)})", "SideNotice.show")
-        # if SideNotice.waiting:
-            # Base.log("D", f"当前等待队列：{[t.index for t in SideNotice.waiting]}, 当前空位：{self.master.sidenotice_avilable_slots}", "SideNotice.show")
-        self.master.sidenotice_avilable_slots.sort()
-        self.hide()
-        self.destroy()
     def __repr__(self):
         return f"SideNotice(text={repr(self.notice_text)}, index={self.index}, slot={self.slot})"

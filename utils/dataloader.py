@@ -527,14 +527,17 @@ class Chunk:
 
 
 
-        # TODO: 把卫生人员列表的存储做好
+        # 存储卫生人员列表
+        if hasattr(self.bound_data, 'cleaning_staff') and self.bound_data.cleaning_staff:
+            try:
+                cleaning_staff_path = os.path.join(self.path, "cleaning_staff")
+                with open(cleaning_staff_path, "w+", encoding="utf-8") as f:
+                    json.dump(self.bound_data.cleaning_staff, f, ensure_ascii=False, indent=2)
+                Base.log("D", f"卫生人员列表已保存到 {cleaning_staff_path}", "Chunk.save")
+            except Exception as e:
+                Base.log("E", f"保存卫生人员列表失败: {str(e)}", "Chunk.save")
 
-        json.dump(self.bound_data.user, open(os.path.join(self.path, "user"), "w+"))
-        json.dump(self.bound_data.last_reset, open(os.path.join(self.path, "last_reset"), "w+"))
-        json.dump(self.bound_data.save_time, open(os.path.join(self.path, "save_time"), "w+"))
-        json.dump(self.bound_data.version, open(os.path.join(self.path, "version"), "w+"))
-        json.dump(self.bound_data.version_code, open(os.path.join(self.path, "version_code"), "w+"))
-        json.dump(self.bound_data.last_start_time, open(os.path.join(self.path, "last_start_time"), "w+"))
+        # 保存其他基
             
 
 
