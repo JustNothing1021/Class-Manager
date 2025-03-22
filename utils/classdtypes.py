@@ -829,8 +829,8 @@ class ClassObj(Base):
                         students:        Union[Dict[int, "ClassObj.Student"], OrderedKeyList["ClassObj.Student"]], 
                         key:             str,  
                         groups:          Union[Dict[int, "ClassObj.Group"], OrderedKeyList["ClassObj.Group"]],
-                        cleaing_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
-                        # 某种历史遗留:cleaning拼写错误,但是改不了了
+                        cleaning_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
+                        # 某种历史遗留:cleaning拼写错误, 但是改不了了
                         homework_rules:  Optional[Union[Dict[str, "ClassObj.HomeworkRule"], OrderedKeyList["ClassObj.HomeworkRule"]]] = None):
                 """
                 班级构造函数。
