@@ -9,7 +9,7 @@ from PySide6.QtCore    import Qt, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsPixmapItem, QGraphicsItemGroup
 
 class Background:
-    """主界面背景"""
+    """背景管理类，用于处理和显示应用程序的背景图像或视频"""
 
     def __init__(self, type: Literal["image", "video"], path: str, max_fr: Optional[int] = None, loop: bool = True):
         self.type   = type
@@ -91,7 +91,7 @@ class BackgroundDisplayItem:
 
 
 class BackgroundScheme:
-    """主界面背景方案"""
+    """背景方案类，用于管理多个背景的切换和过渡效果"""
 
     fade_curve = QEasingCurve.Type.OutCubic
 

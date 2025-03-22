@@ -7,18 +7,24 @@ from utils.basetypes import Base
 from utils.update_check import CLIENT_VERSION, CLIENT_VERSION_CODE
 
 class SettingsInfo:
-        """设置信息"""
+        """设置信息类，用于管理和存储应用程序的配置参数"""
 
         current: "SettingsInfo"
         
         def __init__(self, **kwargs):
-            """设置参数"""
+            """初始化设置信息对象
+            
+            :param kwargs: 键值对形式的初始设置参数
+            """
             self.reset()
             for k, v in kwargs.items():
                 setattr(self, k, v)
 
         def reset(self) -> "SettingsInfo":
-            "重置设置"
+            """重置所有设置参数为默认值
+            
+            :return: 重置后的设置信息对象
+            """
 
             if not hasattr(self, "client_version"):
                 self.client_version = CLIENT_VERSION
@@ -59,7 +65,11 @@ class SettingsInfo:
             return self
 
         def save_to(self, file_path:str) -> "SettingsInfo":
-            "保存设置"
+            """将当前设置保存到指定文件
+            
+            :param file_path: 保存设置的文件路径
+            :return: 当前设置信息对象
+            """
             Base.log("I", f"保存设置到{file_path}", "SettingsInfo.save_to")
             if not os.path.isdir(os.path.dirname(file_path)):
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -71,7 +81,11 @@ class SettingsInfo:
             return self
 
         def load_from(self, file_path:str) -> "SettingsInfo":
-            "加载设置"
+            """从指定文件加载设置
+            
+            :param file_path: 设置文件的路径
+            :return: 加载后的设置信息对象
+            """
             try:
                 obj: "SettingsInfo" = pickle.load(open(file_path, "rb"))
                 self.__dict__.update(obj.get_dict())
@@ -82,18 +96,29 @@ class SettingsInfo:
             return self
 
         def set(self, **kwargs) -> "SettingsInfo":
-            "设置设置"
+            """批量设置多个配置参数
+            
+            :param kwargs: 键值对形式的设置参数
+            :return: 当前设置信息对象
+            """
             Base.log("I", "设置设置", "SettingsInfo.set")
             for k, v in kwargs.items():
                 setattr(self, k, v)
             return self
         
         def get(self, key:str) -> Any:
-            "获取设置"
+            """获取指定键名的设置值
+            
+            :param key: 设置参数的键名
+            :return: 对应的设置值
+            """
             return getattr(self, key)
 
         def get_dict(self):
-            "返回设置字典"
+            """返回所有设置参数的字典表示
+            
+            :return: 包含所有设置的字典
+            """
             return dict((k, v) for k, v in self.__dict__.items() 
                         if (not k.startswith('__')) and 
                         (not isinstance(k, (FunctionType, MethodType))))

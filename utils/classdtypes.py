@@ -1,9 +1,9 @@
-from utils.basetypes import * # 懒得写import了
+from utils.basetypes import * # 导入所有基础类型(lazy)
 import base64
 
 def get_random_template(templates: "OrderedKeyList[ClassObj.ScoreModificationTemplate]"):
 
-    # 把鼠标移到上面这个黄色的东西看注释吧
+    # tip:IDE可以查看上方定义的注释说明
     """
     关于某些抽象的类型注释，比如``OrderedKeyList[ScoreModificationTemplate]``
 
@@ -87,7 +87,7 @@ class ClassObj(Base):
             "历史分数记录"
 
 
-# 小寄巧：如果一个类在需要在类型标注里面用到但还没定义可以用引号括起来
+# Tip:如果需要在类型标注中使用尚未定义的类，可以用引号括起来
     class Student(Object, SupportsKeyOrdering):
             "一个学牲"
 
@@ -131,7 +131,7 @@ class ClassObj(Base):
                 """
                 super().__init__()
                 self._name = name
-                # 这些带下划线的都是内部用来存储的，实际访问的是property
+                # 带下划线的属性为内部存储用，实际访问应使用property
                 self._num = num
                 self._score = score
                 self._belongs_to:str = belongs_to
@@ -457,8 +457,7 @@ class ClassObj(Base):
                     super().__init__(stu_or_name._name, stu_or_name._num, stu_or_name._score, stu_or_name._belongs_to, {}, **(kwargs))
                 else:
                     super().__init__(stu_or_name, num, score, belongs_to, {})
-                del self.history            # ...为什么不直接写在@overload下面
-                                            # 因为写了会爆
+                del self.history            # 单独处理历史记录(防炸)
 
     class Group(Object):
         "一个小组"
@@ -505,7 +504,7 @@ class ClassObj(Base):
         @property
         def average_score_without_lowest(self):
             "查看小组去掉最低分后的平均分。"
-            return (round((sum([s.score for s in self.members]) - min(*[s.score for s in self.members])) / (len(self.members) - 1), 2)) if len(self.members) > 1 else 0.0 # 如果只有一个人的话去掉最低分就没有人了。。
+            return (round((sum([s.score for s in self.members]) - min(*[s.score for s in self.members])) / (len(self.members) - 1), 2)) if len(self.members) > 1 else 0.0 # 如果只有一人则返回0
 
 
         def has_member(self, student: "ClassObj.Student"):
@@ -699,11 +698,11 @@ class ClassObj(Base):
                             findscore = 0.0
                             lowestscore = 0.0
                             lowesttimekey = 0
-                            # 这一段就是重新算最高分和最低分
+                            # 重新计算最高分和最低分
                             for i in self.target.history:
                                 tmp: ClassObj.ScoreModification = self.target.history[i]
 
-                                if tmp.execute_time_key != self.execute_time_key and tmp.executed: # 自己不参与
+                                if tmp.execute_time_key != self.execute_time_key and tmp.executed: # 排除自身
                                     findscore += tmp.mod
 
                                 if lowestscore > findscore and tmp.execute_time_key != self.execute_time_key: 
@@ -830,8 +829,8 @@ class ClassObj(Base):
                         students:        Union[Dict[int, "ClassObj.Student"], OrderedKeyList["ClassObj.Student"]], 
                         key:             str,  
                         groups:          Union[Dict[int, "ClassObj.Group"], OrderedKeyList["ClassObj.Group"]],
-                        cleaning_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
-                        # 我知道cleaning拼错了，但是改不了了。。。。
+                        cleaing_mapping: Optional[Dict[int, Dict[Literal["member", "leader"], List["ClassObj.Student"]]]] = None,
+                        # 某种历史遗留:cleaning拼写错误,但是改不了了
                         homework_rules:  Optional[Union[Dict[str, "ClassObj.HomeworkRule"], OrderedKeyList["ClassObj.HomeworkRule"]]] = None):
                 """
                 班级构造函数。
@@ -873,7 +872,7 @@ class ClassObj(Base):
             @property
             def student_avg_score(self):
                 "学生平均分"
-                return self.student_total_score / max(self.student_count, 1) # 这边要注意小心不要除以0
+                return self.student_total_score / max(self.student_count, 1) # Tip:避免除以零错误
 
             @property
             def stu_score_ord(self):
@@ -1123,7 +1122,7 @@ class ClassObj(Base):
                 :param class_obs: 班级状态侦测器
                 :raise ObserverError: lambda或者function爆炸了
                 :return: 是否达成"""
-                # 反人类写法又出现了
+                # 非常规写法(抽象)
                 if ("on_reset" in self.when_triggered and "any" not in self.when_triggered
                     ) and  (
                     not (student.highest_score == student.lowest_score == student.score == 0)):
@@ -1566,6 +1565,7 @@ class AchievementStatusObserver(Object):
     tps:                        int
     "最大每秒更新次数"
 
+# 标准输出重定向（停用）
 # stdout = sys.stdout
 # stderr = sys.stderr
 # Base.clear_oldfile(Base.log_file_keepcount)
@@ -1606,4 +1606,4 @@ default_achievement_template = AchievementTemplate("如果你看到了这行信�
                                                    "这个成就正如字面意思，是不可能达成的", 
                                                    condition_info="别看了，不可能达成就是不可能达成", 
                                                    further_info="我触发条件都写的lambda: 0.1 + 0.2 == 0.3，怎么可能达成", 
-                                                   others=lambda: 0.1 + 0.2 == 0.3) # sonarqube: disable-python:S1244
+                                                   others=lambda: 0.1 + 0.2 == 0.3) # 浮点数精度测试，disable-python:S1244

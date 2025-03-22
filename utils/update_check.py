@@ -391,7 +391,7 @@ def update_check(current_core_version:int, current_gui_version:int) -> Union[Lit
 
 
 def get_update_zip(path:str="update.zip") -> Union[Literal[True], Exception, dict]:
-    """下载更新包。"""
+    """下载更新包"""
     try:
         response = requests.get(DOWNLOAD_URL)
         response.raise_for_status()
@@ -402,7 +402,7 @@ def get_update_zip(path:str="update.zip") -> Union[Literal[True], Exception, dic
         return e
 
 def unzip_to_dir(path:str="update.zip", dir:str="update"):
-    """解压更新包到指定目录。"""
+    """解压更新包到指定目录"""
     try:
         shutil.rmtree(dir)
     except FileNotFoundError:
@@ -415,7 +415,7 @@ def unzip_to_dir(path:str="update.zip", dir:str="update"):
         return e
 
 def update(dir:str="update"):
-    """更新。"""
+    """执行更新操作"""
     try:
         shutil.copytree(os.path.join(dir, f"{REPO_NAME}-{MASTER}"), os.getcwd(), dirs_exist_ok=True)
     except Exception as e:

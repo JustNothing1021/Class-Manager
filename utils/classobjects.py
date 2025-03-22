@@ -29,13 +29,13 @@ from utils.dataloader import Chunk, DataObject, UserDataBase
 debug = True
 
 DEFAULT_USER = "测试用户1"
-"默认用户名"
+"""默认用户名常量"""
 
 CORE_VERSION = VERSION_INFO["core_version"]
-"版本号"
+"""核心版本号"""
 
 CORE_VERSION_CODE = VERSION_INFO["core_version_code"]
-"版本号代码"
+"""核心版本号代码，用于版本比较"""
 
 
 try:
@@ -54,7 +54,7 @@ from abc import abstractmethod
 from .functions import addrof
 
 ctrlc_times = 0
-"按下ctrl+c的次数"
+"""Ctrl+C按下计数器"""
 
 sys.stdout = Base.captured_stdout
 sys.stderr = Base.captured_stderr
@@ -70,7 +70,7 @@ def sigint_handler(sigval: Optional[int], frame: Optional[FrameType]):
     elif ctrlc_times >= 30:
         Base.log("W", f"你再按别把程序玩出RuntimeError了（帧地址：{addr}）", "sigint_handler")
     elif ctrlc_times >= 10:
-        # 听说某些人很喜欢按Ctrl+C
+        # 处理Ctrl+C中断信号
         Base.log("W", f"你真是够了（帧地址：{addr}）", "sigint_handler")
     else:
         Base.log("W", f"收到了SIGINT信号，没事别瞎按Ctrl+C\n帧:{repr(frame)}", "sigint_handler")
@@ -82,7 +82,8 @@ signal.signal(signal.SIGINT, sigint_handler)
 def utc(precision:int=3):
     """返回当前时间戳
 
-    :param precision: 精度，默认为3
+    :param precision: 时间戳精度，表示小数点后的位数，默认为3
+    :return: 指定精度的时间戳整数
     """
     return int(time.time() * pow(10, precision))
 
@@ -214,25 +215,25 @@ class ClassObj(ClassObj):
 
         for c in copy.deepcopy(self.classes).keys():   # 重置班级信息
             if c in DEFAULT_CLASSES:
-                self.classes[c].cleaning_mapping = DEFAULT_CLASSES[c].cleaning_mapping # 复原默认卫生打扫规则
-                self.classes[c].homework_rules  = DEFAULT_CLASSES[c].homework_rules # 作业规则
-                self.classes[c].name            = DEFAULT_CLASSES[c].name   # 班级名
-                self.classes[c].owner           = DEFAULT_CLASSES[c].owner  # 班主任
+                self.classes[c].cleaing_mapping = DEFAULT_CLASSES[c].cleaing_mapping # 恢复默认卫生打扫规则
+                self.classes[c].homework_rules  = DEFAULT_CLASSES[c].homework_rules # 恢复作业规则
+                self.classes[c].name            = DEFAULT_CLASSES[c].name   # 恢复班级名
+                self.classes[c].owner           = DEFAULT_CLASSES[c].owner  # 恢复班主任信息
                 default_students = DEFAULT_CLASSES[c].students.copy()
 
                 for s in copy.deepcopy(self.classes[c].students).keys():  # 重置这个班级的学生信息
                     if s in default_students:
-                        self.classes[c].students[s].name = default_students[s].name # 学生姓名
-                        self.classes[c].students[s].num = default_students[s].num # 学号
-                        self.classes[c].students[s].belongs_to_group = default_students[s].belongs_to_group # 所属小组
+                        self.classes[c].students[s].name = default_students[s].name # 恢复学生姓名
+                        self.classes[c].students[s].num = default_students[s].num # 恢复学号
+                        self.classes[c].students[s].belongs_to_group = default_students[s].belongs_to_group # 恢复所属小组
 
 
         for _class in self.classes.values():
             for g in copy.deepcopy(_class.groups).keys():   # 重置小组信息
                 if g in DEFAULT_CLASSES[_class.key].groups.keys():
-                    _class.groups[g].further_desc = DEFAULT_CLASSES[_class.key].groups[g].further_desc # 复原默认描述，满足他们的文学创作
-                    _class.groups[g].name = DEFAULT_CLASSES[_class.key].groups[g].name # 小组名
-                    _class.groups[g].belongs_to = DEFAULT_CLASSES[_class.key].groups[g].belongs_to # 所属班级
+                    _class.groups[g].further_desc = DEFAULT_CLASSES[_class.key].groups[g].further_desc # 恢复默认描述
+                    _class.groups[g].name = DEFAULT_CLASSES[_class.key].groups[g].name # 恢复小组名
+                    _class.groups[g].belongs_to = DEFAULT_CLASSES[_class.key].groups[g].belongs_to # 恢复所属班级
 
     def reset_all_data(self, reset_students_and_groups: bool=False):
         "重置所有数据"
@@ -274,8 +275,8 @@ class ClassObj(ClassObj):
 
         self.classes:Dict[str, "ClassObj.Class"] = data["classes"]
         if isinstance(self.classes, OrderedKeyList):
-            self.classes = self.classes.to_dict() # 因为出了点抽象bug
-                                                  # OrderedKeyList的一堆bug我以后再修吧（
+            self.classes = self.classes.to_dict() # 转换为字典解决类型问题
+                                                  # TODO:修复OrderedKeyList相关问题
 
         if hasattr(self, "target_class") and self.target_class is not None:
             self.target_class = self.classes[self.target_class.key]
@@ -283,8 +284,8 @@ class ClassObj(ClassObj):
             self.target_class = None
 
         self.achievement_templates: "Union[OrderedKeyList[ClassObj.AchievementTemplate], Dict[str, ClassObj.AchievementTemplate]]" \
-            = OrderedKeyList(data["achievements"]).to_dict()  # 因为太卡了（改天我再优化吧  -  预计 1.4.7 -> 1.4.8
-                                                              # 我写的搜索算法跟史一样
+            = OrderedKeyList(data["achievements"]).to_dict()  # 转换为字典
+                                                              # TODO:搜索算法优化
         self.modify_templates: "Union[OrderedKeyList[ClassObj.ScoreModificationTemplate], Dict[str, ClassObj.ScoreModificationTemplate]]" \
             =  OrderedKeyList(data["templates"])
 
@@ -330,7 +331,7 @@ class ClassObj(ClassObj):
                     except (AttributeError, KeyError):
                         setattr(self.classes[key_class], attr, default)
 
-            for key, student in _class.students.items():  # 逆天O(n^3)
+            for key, student in _class.students.items():  # 性能优化点：当前为O(n^3)复杂度(?)
                 for attr, default in [
                     ("last_reset_info", ClassObj.DummyStudent())
                 ]:
@@ -1010,7 +1011,7 @@ class ClassObj(ClassObj):
 
 
     def retract_lastest(self) -> Tuple[bool, str]:
-        """撤回上步"""
+        """撤销上一步操作"""
         if self.class_obs.opreation_record.is_empty():
             Base.log("W","没有可撤回的点评","MainThread.retract_last")
             return True, "没有需要的点评"
@@ -1240,7 +1241,7 @@ class ClassObj(ClassObj):
                                     return find_in_group(uuid)
                                 except ValueError:
                                     raise ValueError(f"找不到对应的数据，uuid: {uuid}")
-                                            # weeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+                                            # TODO:待实现功能(?)
 
 ClassDataObjType = Union[
         Student, Class, 
@@ -1308,12 +1309,14 @@ class ClassStatusObserver(Object):
                         orig = s.num
                         s.num = k
                         Base.log("I", f"学生 {s.name} 的学号已从 {orig} 变为 {s.num}（二者不同步）", "ClassStatusObserver._start")
+                # 学生计数和总分计算（已迁移至其他方法）
                 # self.student_count = len(self.classes[self.class_id].students)
                 # self.student_total_score = sum([s.score for s in self.classes[self.class_id].students.values()])
                 self.stu_score_ord = dict(enumerate(sorted(list(self.classes[self.class_id].students.values()), key=lambda a:a.score), start=1))
         else:
             Base.log("I", "已经有存在的侦测线程了，无需再次启动")
 
+    # 文档字符串继承
     # rank_dumplicate.__doc__ = Class.rank_dumplicate.__doc__
     # rank_non_dumplicate.__doc__ = Class.rank_non_dumplicate.__doc__
 
@@ -1431,12 +1434,12 @@ class AchievementStatusObserver(Object):
                         if self.tps:
                             time.sleep(max((1 / self.tps) - (time.time() - last_frame_time), 0))
                         last_frame_time = time.time()
-                        for s in list(self.classes[self.class_id].students.values()): # 笑死我了经典O2
-                            for a in list(self.achievement_templates.keys()):         #        -- 某个做数论题都用dfs的人
+                        for s in list(self.classes[self.class_id].students.values()): # 性能优化点：O(n²)复杂度(?)
+                            for a in list(self.achievement_templates.keys()):
                                 if self.achievement_templates[a].achieved(s, self.class_obs) and (
                                     self.achievement_templates[a].key not in 
                                     [a.temp.key for a in self.classes[self.class_id].students[s.num].achievements.values()]):
-                                    time.sleep(0.1) # 为了防止那边操作还未完成导致误判（真的有小概率情况会）
+                                    time.sleep(0.1) # 等待操作完成，避免竞态条件
                                     if self.achievement_templates[a].achieved(s, self.class_obs):
                                         Base.log("I", F"[{s.name}] 达成了成就 [{self.achievement_templates[a].name}]")
                                         a2 = ClassObj.Achievement(self.achievement_templates[a], s)

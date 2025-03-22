@@ -53,24 +53,29 @@ from loguru import logger
 os.makedirs(os.getcwd() + "/log", exist_ok=True)
 
 cwd = os.getcwd()
-"当前工作目录"
+"""当前工作目录路径"""
 
 bs = "\\"
+"""反斜杠常量，用于路径处理"""
 
 debug = True
-"是否为调试模式"
+"""调试模式标志"""
 
 
 function = type(lambda: None)
-"函数类型"
+"""函数类型对象，用于类型检查"""
 
 
 SOUND_BRUH = os.getcwd() + "/res/sounds/bruh.mp3"
-"bruh"
+"""提示音效文件路径"""
 
 
 def utc(prec: int = 3):
-    "获取当前UTC时间"
+    """获取当前UTC时间戳
+    
+    :param prec: 精度，表示小数点后的位数
+    :return: 指定精度的UTC时间戳
+    """
     return int(time.time() * (10 ** prec))
 
 if sys.stdout is None:
@@ -85,7 +90,11 @@ if sys.stdout is None:
 
 
 def get_function_namespace(func) -> str:
-    "获取函数的命名空间"
+    """获取函数的命名空间
+    
+    :param func: 函数对象
+    :return: 函数的命名空间字符串
+    """
     module = inspect.getmodule(func)
     if not hasattr(func, "__module__"):
         try:
@@ -145,13 +154,11 @@ from ctypes import c_int, c_int8, c_int16, c_int32, c_int64, c_uint, c_uint8, c_
 _cinttype = Union[int, c_int, c_uint, c_int8, c_int16, c_int32, c_int64, c_uint8, c_uint16, c_uint32, c_uint64]
 
 def cinttype(dtype: _cinttype, name: Optional[str] = None):
-    """搓了一个我自己的cint类型（bushi
+    """自定义C整数类型包装器(抽象)
     
     :param dtype: 要继承的数据类型
     :param name:  类名
     :return: 继承了cint类型的类
-
-    byd越来越癫了
     """
     if name is None:
         name = dtype.__name__
@@ -406,21 +413,22 @@ def get_function_module(func: Union[object, Callable]) -> str:
     return module_name
 
 cwd = os.getcwd()
-"当前工作目录"
+"""当前工作目录路径"""
 
 bs = "\\"
+"""反斜杠常量，用于路径处理"""
 
 debug = True
-"是否为调试模式"
+"""调试模式标志"""
 
 
 
 function = type(lambda: None)
-"函数类型"
+"""函数类型对象，用于类型检查"""
 
 
 SOUND_BRUH = os.getcwd() + "/res/sounds/bruh.mp3"
-"bruh"
+"""提示音效文件路径"""
 
 class NULLPTR:
     "虽然没用"

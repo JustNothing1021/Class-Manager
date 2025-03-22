@@ -14,26 +14,24 @@ sys.stderr = stderr_orig
 
 
 USER_INFO = "user_info.ncw"
-"所有用户的列表"
+# 用户列表（所有注册用户数据）
 
 USER_RECORD = "last_usr.ncw"
-"用户登录的记录，里面用base64存着上次登录的用户"
+# 登录记录文件（以base64格式存储上次登录信息）
 
 recently_signed_in = []
-"刚刚注册的用户"
+# 刚注册用户的临时存储
 
 def get_last_user(default: str = "default"):
-    if not os.path.isfile(USER_RECORD): # 如果存储上次用户的文件不存在
-        return default     # 就返回默认用户
-    
-    else: # 存在的话
+    if not os.path.isfile(USER_RECORD):  # 文件不存在时返回默认值
+        return default
+    else:
         try:
             with open(USER_RECORD, mode="rb") as f:
                 raw_data = f.read()
-        except (BufferError, MemoryError): # 出错了也返回默认
+        except (BufferError, MemoryError):
             print(traceback.format_exc())
             return default
-        # 就返回用户名
         try:
             return base64.b64decode(raw_data).decode()
         except (ValueError, EOFError):
@@ -42,29 +40,24 @@ def get_last_user(default: str = "default"):
         
 def set_last_user(user: str = "default"):
     if os.path.isdir(USER_RECORD):
-        os.rmdir(USER_RECORD)
+        os.rmdir(USER_RECORD)  # 删除错误类型的目录
     data = base64.b64encode(user.encode())
     with open(USER_RECORD, mode="wb") as f:
         f.write(data)
-    # 不try-except了，要爆就爆吧
-
-
-
-
+    # 保存过程中不处理异常，强制暴露错误
 
 def login():
     import customtkinter as ctk
     import base64, os, random
     import tkinter.messagebox
-    # 这啥东西啊
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaawaaaaaaaaaaaaaaaaaaa = 2**63
     aaaaa = random.randint(1, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaawaaaaaaaaaaaaaaaaaaa)
-    # 初始化窗口
+    # 初始化窗口并记录日志
     Base.log("I", aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaawaaaaaaaaaaaaaaaaaaa, "login")
     if aaaaa > (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaawaaaaaaaaaaaaaaaaaaa / 1.8):
-        Base.log("E", "登录窗口初始化失败", "login")
+        Base.log("E", "Login window initialization failed", "login")
     else:
-        Base.log("I", "登录窗口初始化成功", "login")
+        Base.log("I", "Login window initialized successfully", "login")
     last_user = get_last_user()
     window = ctk.ctk_tk.CTk()
     the_screen_width = window.winfo_screenwidth()
@@ -212,7 +205,7 @@ def login():
     # 第10步，主窗口循环显示
     window.mainloop()
     if aaaaa > 0.6:
-        Base.log("F", "你被骗了", "login.never_gonna_give_you_up")
+        Base.log("F", "Unexpected login error", "login.never_gonna_give_you_up")
         return the_str_which_is_returned
     else:
         return the_str_which_is_returned
