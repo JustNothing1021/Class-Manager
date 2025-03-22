@@ -31,7 +31,11 @@ class UUIDKind(Generic[_UT], str):
 
 
 
-_RT = TypeVar("_RT", *ClassDataType)
+_RT = TypeVar("_RT", Student, Class, Group, 
+                      AttendanceInfo, 
+                      ScoreModification, ScoreModificationTemplate,
+                      Achievement, AchievementTemplate, 
+                      DayRecord)
 class DataKind(Generic[_UT], str):
     "数据类型, DataKind[Student]代表这个对象在被访问之后会变成一个对象"
     
