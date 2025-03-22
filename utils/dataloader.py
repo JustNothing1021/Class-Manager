@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import zipfile
 import sqlite3
 
-# 这次没用AI，我全都手打的
+# 数据加载器
 
 class NullParam:
 
@@ -91,7 +91,7 @@ class UserDataBase(Object):
         self.last_start_time = last_start_time
         self.weekday_record = weekday_record
         self.current_day_attendance = current_day_attendance
-        self.loaded = user is not NullParam # 只要有一个不是空的就当作已经加载了
+        self.loaded = user is not NullParam # 任一参数非空即视为已加载
 
 
 
@@ -132,7 +132,7 @@ class DataObject:
                                             class  text,                      -- 数据类型
                                             data   text                       -- 数据
                                     )""")
-                # conn.commit()
+                # conn.commit() - 数据库提交操作（还未使用）
             self.conn_list[type_name] = dictionary
 
         conn = self.conn_list[type_name][uuid[:2]]
@@ -181,7 +181,7 @@ class DataObject:
         except KeyError as e:
             raise KeyError(F"来自{path!r}的对象没有具体的数据类型！") from e
         
-        data.pop("type")        # 防止一会传参TypeError
+        data.pop("type")        # 移除类型信息避免参数错误
 
         if data_type == Student.chunk_type_name:
             self.student_history: list[UUIDKind[ScoreModification]] = data.pop("history")
@@ -202,7 +202,7 @@ class DataObject:
 
         elif data_type == ScoreModificationTemplate.chunk_type_name:
             self.object = Group(**data)
-            self.object_load_state = "normal" # 因为本来就不需要手动连接
+            self.object_load_state = "normal" # 默认加载状态，无需手动连接
 
         elif data_type == ScoreModification.chunk_type_name:
             self.modify_temp: UUIDKind[ScoreModificationTemplate] = data.pop("template")
@@ -222,7 +222,7 @@ class DataObject:
             self.class_students: List[UUIDKind[Student]] = data.pop("students")
             self.class_groups: List[UUIDKind[Group]] = data.pop("groups")
             self.class_cleaning_mapping: List[Tuple[int, List[Tuple[Literal["member", "leader"], List[UUIDKind[Student]]]]]] = data.pop("cleaning_mapping")
-            # 长  难  句
+            # 复杂数据处理逻辑
             self.class_homework_rules: Dict[str, UUIDKind[HomeworkRule]] = data.pop("homework_rules")
             data["students"] = {}
             data["groups"] = {}
@@ -329,7 +329,7 @@ class Chunk:
             tasks = spilt_list(self.bound_data.templates.values(), max_workers, Chunk.max_task_per_thread, Chunk.min_task_per_thread)
             running_task = 0
             index = 0
-            # total_task = 0
+            # total_task = 0 # 任务计数器（未使用）
             finished_task = 0
             max_index = tasks.__len__()
             for task_list in tasks:
@@ -348,7 +348,7 @@ class Chunk:
 
                 index += 1
                 running_task += 1
-                # total_task += 1
+                # total_task += 1 任务计数器（未使用）
                 Base.log("D", f"分数模板列表保存任务部署，任务数量: {len(task_list)} ({index}/{max_index})", "Chunk.save")
 
 
@@ -386,8 +386,8 @@ class Chunk:
                     finished_task += 1
                 index += 1
                 running_task += 1
-                # total_task += 1
-                # executor.submit(_save_history_list)
+                # total_task += 1 # 任务计数增加（未使用）
+                # executor.submit(_save_history_list) # 并行保存历史记录（未使用）
                 if self.use_threadpool:
                     executor.submit(_save_history_list)
                 else:
@@ -418,7 +418,7 @@ class Chunk:
                     finished_task += 1
                 index += 1
                 running_task += 1
-                # total_task += 1
+                # total_task += 1 # 任务计数增加（未使用）
                 # executor.submit(_save_class_list)
                 if self.use_threadpool:
                     executor.submit(_save_class_list)
@@ -440,7 +440,7 @@ class Chunk:
                             finished_task += 1
                         index += 1
                         running_task += 1
-                        # total_task += 1
+                        # total_task += 1 # 任务计数增加（未使用）
                         # executor.submit(_save_student_list)
                         if self.use_threadpool:
                             executor.submit(_save_student_list)
@@ -463,8 +463,8 @@ class Chunk:
                                 finished_task += 1
                             index += 1
                             running_task += 1
-                            # total_task += 1
-                            # executor.submit(_save_history_list)
+                            # total_task += 1 # 任务计数增加（未使用）
+                            # executor.submit(_save_history_list) # 并行保存历史记录（未使用）
                             if self.use_threadpool:
                                 executor.submit(_save_history_list)
                             else:
@@ -487,7 +487,7 @@ class Chunk:
                                 running_task -= 1
                             index += 1
                             running_task += 1
-                            # total_task += 1
+                            # total_task += 1  # 任务计数增加（未使用）
                             # executor.submit(_save_achievement_list)
                             if self.use_threadpool:
                                 executor.submit(_save_achievement_list)
@@ -503,7 +503,7 @@ class Chunk:
                 def _save_day_record_list(task_list: List[DayRecord] = task_list):
                     for day_record in task_list:
                         DataObject(day_record, self).save()
-                # total_task += 1
+                # total_task += 1  # 任务计数增加（未使用）
                 # executor.submit(_save_day_record_list) 
                 if self.use_threadpool:
                     executor.submit(_save_day_record_list)
@@ -527,7 +527,7 @@ class Chunk:
 
 
 
-        # 存储卫生人员列表
+        # 保存卫生值日安排
         if hasattr(self.bound_data, 'cleaning_staff') and self.bound_data.cleaning_staff:
             try:
                 cleaning_staff_path = os.path.join(self.path, "cleaning_staff")
@@ -537,7 +537,7 @@ class Chunk:
             except Exception as e:
                 Base.log("E", f"保存卫生人员列表失败: {str(e)}", "Chunk.save")
 
-        # 保存其他基
+        # 保存其他基础数据
             
 
 

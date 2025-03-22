@@ -1,5 +1,6 @@
-"""没用了，因为又分了个文件，这个是适配老版本用的"""
+"""兼容性处理"""
+
 
 from .classdtypes import *
-ClassDataObj = ClassObj # 因为老版叫这个
+ClassDataObj = ClassObj # 类型别名，保持向后兼容
 

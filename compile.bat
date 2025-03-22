@@ -1,7 +1,9 @@
+:: Use GB2312 AND CRLF
+:: Commit by CRLF, not LF
 @echo off
 chcp 936 >nul
 setlocal enabledelayedexpansion
-title ClassManager_Action±‡“Î
+title ClassManager_±‡“Î
 cd /d "%~dp0"
 
 set "DEFAULT_COMPILER=1"

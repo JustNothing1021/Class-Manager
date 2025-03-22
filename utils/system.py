@@ -13,8 +13,11 @@ stderr_queue = Queue()
 output_list = []
 
 
-class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么用
-    """一个用来重定向标准输出的类"""
+class SystemLogger(TextIOWrapper):
+    """用于重定向标准输出的日志记录类
+    
+    该类通过继承TextIOWrapper实现对标准输出流的捕获和重定向
+    """
 
     def __init__(self, *args, 
                  logger_name:str="sys.stdout",
@@ -25,9 +28,14 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
         self.function = function
         self.logger_name = logger_name
 
-
     def write(self, s:str):
-        "也不知道为什么会有IndexError，所以pass掉了"
+        """写入数据到日志
+        
+        :param s: 要写入的字符串
+        :return: 写入的字符数
+        
+        tip：捕获并忽略可能出现的IndexError异常
+        """
         self.line += s
         if "\n" in self.line:
             try:
@@ -77,7 +85,10 @@ class SystemLogger(TextIOWrapper):    # 虽然对windows上的os.system没什么
 
 
 class CommandOutput(NamedTuple):
-    "系统命令输出"
+    """系统命令执行结果的数据结构
+    
+    包含命令执行的标准输出、标准错误、返回码等信息
+    """
     stdout:       str
     stderr:       str
     final_output: str
@@ -96,7 +107,17 @@ def system(args:            Union[str, list],
            cwd:             Optional[str]     = None,
            sync_update_bit: int               = 1
         ) -> CommandOutput:
-    """执行命令，采用了世界上最脑溢血的写法
+    """执行系统命令并返回结果
+    
+    :param args: 命令字符串或参数列表
+    :param show_output: 是否显示命令输出
+    :param stdin: 标准输入流
+    :param stdout: 标准输出流
+    :param stderr: 标准错误流
+    :param encoding: 字符编码
+    :param cwd: 工作目录
+    :param sync_update_bit: 同步更新位
+    :return: 命令执行结果
     
     :param args: 命令
     :param show_output: 是否显示输出，默认为True
