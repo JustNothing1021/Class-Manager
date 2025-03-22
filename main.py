@@ -58,32 +58,35 @@ from   utils.high_precision_operation import HighPrecision as Decimal
 
 
 CLIENT_VERSION:      str          = VERSION_INFO["client_version"]
-"客户端界面版本"
+"应用程序界面版本"
 CLIENT_VERSION_CODE: str          = VERSION_INFO["client_version_code"]
-"客户端界面版本号"
+"应用程序界面版本编码"
 settings:            SettingsInfo = SettingsInfo.current
-"当前设置"
+"全局设置对象"
 sys.stdout                        = Base.captured_stdout   # SystemLogger
-"标准输出（定向到系统，会通过日志重定向到终端）"
+"重定向的标准输出"
 sys.stderr                        = Base.captured_stderr   # SystemLogger
-"错误输出"
+"重定向的错误输出"
 base_sys.stdout                   = Base.captured_stdout   # SystemLogger
-"来自核心的标准输出"
+"重定向的核心模块标准输出"
 base_sys.stderr                   = Base.captured_stderr   # SystemLogger
-"来自核心的错误输出"
+"重定向的核心模块错误输出"
 # log_queue:            Queue       = Base.window_log_queue
-# "日志队列（给主界面的日志窗口用的）"
+# "主界面日志窗口队列"
 widget:              "MainWindow"
-"主窗口"
+"主窗口实例"
 ctrlc_times = 0
-"ctrl+c按下的次数"
+"中断信号计数器"
 
 
 
 def exception_handler(exc_type: Optional[Type[BaseException]] = None, 
                       exc_value: Optional[BaseException] = None, 
                       exc_tb: Optional[TracebackType] = None):
-    """捕获异常并弹出错误框（给sys.excepthook用的）"""
+    """捕获未处理的异常并显示错误对话框
+    
+    用作sys.excepthook的处理函数
+    """
     from utils.base import logger
     file_basename = os.path.basename(__file__)
     file_path = __file__.replace(os.getcwd(), "").lstrip("\\/")
@@ -97,7 +100,7 @@ def exception_handler(exc_type: Optional[Type[BaseException]] = None,
     ).exception("Uncaught exception occurred", exc_info=exc_value)
     Base.log_exc("捕获到异常", "exception_handler", exc=exc_value)
     pagesize = 20
-    exc_info = ["捕获到异常！\n"] + traceback.format_exception(exc_type, exc_value, exc_tb) + ["哇，我的程序果然没让我失望\n"]
+    exc_info = ["捕获到异常！\n"] + traceback.format_exception(exc_type, exc_value, exc_tb) + ["\n"]
     total = int(np.ceil(len(exc_info) / pagesize))
     try:
         parent = widget
@@ -125,9 +128,9 @@ if sys.platform != "win32":
 
 
 has_pyaudio: bool = False
-"是否安装了pyaudio"
+"PyAudio库可用性标志"
 has_cv2:     bool = False
-"是否安装了opencv"
+"OpenCV库可用性标志"
 
 try:
     import pyaudio
@@ -147,23 +150,23 @@ def question_yes_no(master:Optional[QWidget],
                     default:bool=True, 
                     type:Literal["question", "information", "warning", "critical"]="question", 
                     pixmap: Optional[QPixmap] = None) -> bool:
-    "寻问用户（是或否）"
+    "显示是/否对话框并返回用户选择"
     Base.log("I", f"询问框：{repr(title)} - {repr(text)}，default={repr(default)}，type={repr(type)}，pixmap={repr(pixmap)}")
     return question_yes_no_orig(master, title, text, default, type, pixmap)
 
 def handle_fatal_qt_error(msg: str):
-    """处理Qt致命错误的函数"""
-    Base.log("F", "哇，pyside6爆掉了", "MainThread")
+    """处理Qt致命错误并安全退出程序"""
+    Base.log("F", "PySide6发生致命错误", "MainThread")
     widget.save_current_settings()
     widget.save_data()
-    widget.critical("趋势", f"PySide6爆掉了！\n它的遗言：\n {msg}\n晚安，玛卡巴卡")
+    widget.critical("错误", f"PySide6发生致命错误\n错误信息：\n {msg}")
     widget.closeEvent(QCloseEvent(), do_tip=False)
     widget.destroy()
     Base.log("F", "程序退出", "MainThread")
     sys.exit(0)
 
 def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
-    """自定义的异常消息处理函数 - 使用字典映射优化"""
+    """自定义Qt消息处理函数，使用字典映射优化日志记录"""
     # 使用字典映射消息类型到日志级别
     msg_type_map = {
         QtMsgType.QtDebugMsg: "D",
@@ -186,12 +189,12 @@ QLoggingCategory.setFilterRules("*.*=true\n*.debug=false\n*.info=false")
 # 让Qt把除了debug和info以外的日志都输出到qtmessagehandler
 
 
-print("不知道加这一句干嘛的，可能是为了证明我还活着")
+print("初始化输出测试")
 
 
 
 class QCoreApplication(QCoreApplication):
-    "用来捕获异常的QCoreApplication（说实话治标不治本）"
+    "自定义QCoreApplication类，用于捕获异常"
     def exec(self) -> int:
         "启动！"
         try:
@@ -204,7 +207,7 @@ class QCoreApplication(QCoreApplication):
 
 
 class MyMainWindow(QMainWindow):
-    """我的（字面意思）主窗口"""
+    """主应用程序窗口类"""
     def __init__(self):
         super().__init__()
         self.is_running = True
@@ -227,7 +230,7 @@ class MyMainWindow(QMainWindow):
         self.close_count = 0
 
     def setTopmost(self, topmost:bool=True):
-        "设置窗口是否置顶"
+        "设置窗口置顶状态"
         if topmost:
             self.setWindowFlags(self.windowFlags() |  Qt.WindowType.WindowStaysOnTopHint)
         else:
@@ -236,12 +239,12 @@ class MyMainWindow(QMainWindow):
 
 
     def closeEvent(self, event:QCloseEvent, tip=True) -> bool:
-        "关闭事件"
+        "处理窗口关闭事件"
         Base.log("I", "主窗口尝试退出", "MyMainWindow")
         self.close_count += 1
         if tip:
             if (self.isEnabled()):
-                reply = question_yes_no(self, "提示", "确定退出？" if self.close_count <= 5 else "你真是够了")
+                reply = question_yes_no(self, "提示", "确定退出？" if self.close_count <= 5 else "确认退出程序？")
                 # 判断返回结果处理相应事项
                 if reply:
                     Base.log("I", "确认退出", "MyMainWindow")
@@ -266,7 +269,7 @@ class MyMainWindow(QMainWindow):
 
 
 class MyWidget(QWidget):
-    "自己做的子窗口，自带动画，要做窗口的话继承这个就行"
+    "自定义子窗口基类，包含动画效果"
 
     def __init__(self, master: Union["MyMainWindow", "MyWidget"]=None):
         """初始化
@@ -292,24 +295,24 @@ class MyWidget(QWidget):
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
 
     if platform.system() != "Windows":
-        warnings.warn("非Windows系统可能无法正常使用动画效果...（其实是能抽象全屏但不知道怎么修）")
+        warnings.warn("非Windows系统可能无法正常使用动画效果")
         def resize(self, *args, **kwargs):
             "调整大小"
             super().setFixedSize(*args, **kwargs)
 
 
     def create_animation(self, property_name, duration, start_value, end_value, easing_curve=QEasingCurve.Type.OutCubic):
-        """创建通用动画
+        """创建通用属性动画
         
         Args:
-            property_name: 要动画的属性名
-            duration: 动画持续时间
+            property_name: 目标属性名
+            duration: 动画持续时间(毫秒)
             start_value: 起始值
             end_value: 结束值
             easing_curve: 缓动曲线类型
             
         Returns:
-            创建的动画对象
+            配置好的QPropertyAnimation对象
         """
         animation = QPropertyAnimation(self, property_name)
         animation.setEasingCurve(easing_curve)
@@ -319,7 +322,7 @@ class MyWidget(QWidget):
         return animation
         
     def showStartAnimation(self):
-        "启动动画"
+        "执行窗口显示动画"
         self.is_running = True
         if widget.animation_speed <= 114514:
             # 计算动画终点位置
@@ -350,7 +353,7 @@ class MyWidget(QWidget):
             self.startanimation.start()
 
     def showCloseAnimation(self):
-        "关闭动画"
+        "执行窗口关闭动画"
         self.is_running = False
         super().show()
         if widget.animation_speed <= 114514:
@@ -431,7 +434,7 @@ class MyWidget(QWidget):
 
         
     def center(self):
-        "窗口居中"
+        "将窗口居中显示在屏幕上"
         screen = QGuiApplication.primaryScreen().availableGeometry()
         size = self.geometry()
         self.move((screen.width() - size.width()) / 2, 
@@ -458,22 +461,17 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     """主程序实例化"""
 
     log_update = Signal(str)
-    """日志更新信号，有日志了就会提交，用于更新日志窗口
+    """日志更新信号，用于更新日志窗口
     
-    弄了半天想到了这个抽象的方法，直接Thread会爆炸
-
-
+    使用信号-槽机制解决跨线程UI更新问题，避免直接在线程中操作UI元素导致的错误：
     QObject: Cannot create children for a parent that is in a different thread.
-
-
-    (Parent is QTextDocument(0x12b27630580), parent's thread is QThread(0x12b26c8ed00), current thread is QThread(0x12b4a495860)
     """
 
     tip_update = Signal(tuple)
-    """提示更新信号，有提示了就会提交，用于更新侧边提示"""
+    """提示更新信号，用于更新侧边提示栏"""
 
     button_update = Signal(ObjectButton, tuple)
-    """按钮闪烁的信号"""
+    """按钮状态更新信号，用于控制按钮闪烁效果"""
 
     show_info = Signal(tuple)
     """显示信息信号"""
@@ -683,12 +681,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.pushButton_2.clicked.connect(self.skip_all_tips)
         self.terminal_locals = {}
         self.ListWidget.addItems([
-            "这里本来打算放点别的", 
-            "因为SideNotice会占地方",
-            "但是打算改用InfoBar",
-            "所以这里为了保证体验",
-            "先留着这玩意占位置吧",
-            "绝对不是因为懒才不改"])
+            "占位内容1", 
+            "占位内容2",
+            "占位内容3",
+            "占位内容4",
+            "占位内容5",
+            "占位内容6"])
         
     @property
     def command_key_list(self) -> List[Optional[str]]:
@@ -908,37 +906,37 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             Base.log("I", "提示处理器线程结束", "MainWindow.TipHandler")
 
     def information(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
-        """展示信息框
+        """显示信息对话框
         
-        :param title: 标题
-        :param text: 内容
-        :param pixmap: 图标"""
+        :param title: 对话框标题
+        :param text: 对话框内容
+        :param pixmap: 自定义图标"""
         self.show_info.emit((title, text, pixmap))
 
     def warning(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
-        """展示警告框
+        """显示警告对话框
 
-        :param title: 标题
-        :param text: 内容
-        :param pixmap: 图标"""
+        :param title: 对话框标题
+        :param text: 对话框内容
+        :param pixmap: 自定义图标"""
         self.show_warning.emit((title, text, pixmap))
 
     def critical(self, title: str, text: str, pixmap: Optional[QPixmap]=None):
-        """展示错误框
+        """显示错误对话框
 
-        :param title: 标题
-        :param text: 内容
-        :param pixmap: 图标     
+        :param title: 对话框标题
+        :param text: 对话框内容
+        :param pixmap: 自定义图标
         """
         self.show_error.emit((title, text, pixmap))
 
     def question_if_exec(self, title: str, text: str, command: Callable, pixmap: Optional[QPixmap]=None):
-        """展示询问框
+        """显示确认对话框并在用户确认时执行指定函数
 
-        :param title: 标题
-        :param text: 内容
-        :param command: 确定按钮的命令
-        :param pixmap: 图标"""  
+        :param title: 对话框标题
+        :param text: 对话框内容
+        :param command: 用户确认时执行的回调函数
+        :param pixmap: 自定义图标"""  
         self.show_question.emit((title, text, command, pixmap))
 
     @Slot()
@@ -988,7 +986,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     @Slot()
     def dont_click(self):
-        "我倒要看看有多少个人要玩这个"
+        "处理特殊按钮点击事件，触发随机彩蛋效果"
         self.log("I", "按钮被点击", "MainWindow.dont_click")
         style = random.randint(1, 4)
         if style == 1:
@@ -1021,9 +1019,9 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     @Slot(str)
     def logwindow_add_newline(self, string:str):
-        """日志记录（显示在窗口，传字符串）
+        """向日志窗口添加新日志条目
 
-        :param string: 字符串
+        :param string: 要添加的日志文本
         """
         if not hasattr(self, "logwindow_content"):
             self.logwindow_content = []
@@ -1033,7 +1031,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
     @Slot()
     def refresh_logwindow(self):
-        """刷新日志窗口"""
+        """更新日志窗口显示内容，同步最新日志信息"""
         if self.logged_count != self.displayed_on_the_log_window:
             self.textBrowser.setText(nl.join(self.short_log_info))
             self.textBrowser.verticalScrollBar().setValue(self.textBrowser.verticalScrollBar().maximum())
@@ -1041,6 +1039,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     def read_video(self):
+        """读取并处理背景视频文件，用于动态背景效果"""
         if not has_cv2:
             return
         if not os.path.isfile("background.mp4"):
@@ -1093,7 +1092,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     def paintEvent(self, event:QPaintEvent):
-        """绘制背景"""
+        """处理窗口绘制事件，渲染背景图像或视频帧"""
 
         if time.time() - self.framerate_update_time >= 1:
             self.framerate = self.framecount
@@ -1120,15 +1119,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
     
 
     def script_backup(self, mode:Literal["none", "all", "only_data"]="only_data"):
-        """脚本备份
+        """执行应用程序备份
         
         :param mode: 备份模式
-
-            "none"：不备份
-
-            "all"：备份所有文件
-
-            "only_data"：只备份数据文件
+            "none": 不执行备份
+            "all": 备份所有程序文件
+            "only_data": 仅备份数据文件
         """                                             
         if not os.path.exists(self.backup_path):
             os.mkdir(self.backup_path)
@@ -1213,10 +1209,10 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.new_template_window.show()
 
     def display_achievement(self, achievement:str, student:Student):
-        """显示成就窗口
+        """显示成就获取通知
 
-        :param achievement: 成就的key
-        :param student: 获得成就的学生"""
+        :param achievement: 成就标识符
+        :param student: 获得成就的学生对象"""
         self.show_tip(f"{student.name} 达成了成就 [{self.achievement_templates[achievement].name}]", 
                       sound=self.achievement_templates[achievement].sound,
                       icon=self.achievement_templates[achievement].icon,
@@ -3098,17 +3094,17 @@ class ListView(MyWidget):
                 pass
 
     def create_animation(self, property_name, duration, start_value, end_value, easing_curve=QEasingCurve.Type.OutCubic):
-        """创建通用动画
+        """创建通用属性动画
         
         Args:
-            property_name: 要动画的属性名
-            duration: 动画持续时间
+            property_name: 目标属性名
+            duration: 动画持续时间(毫秒)
             start_value: 起始值
             end_value: 结束值
             easing_curve: 缓动曲线类型
             
         Returns:
-            创建的动画对象
+            配置好的QPropertyAnimation对象
         """
         animation = QPropertyAnimation(self, property_name)
         animation.setEasingCurve(easing_curve)
