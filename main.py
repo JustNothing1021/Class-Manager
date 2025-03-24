@@ -112,7 +112,6 @@ def exception_handler(exc_type: Optional[Type[BaseException]] = None,
         for i in range(total):
             currentpage = exc_info[i * pagesize: (i + 1) * pagesize]
             QMessageBox.critical(parent, "错误", "".join(currentpage) + f"\n\t\t\t(页码{i + 1}/{total})")
-    sys.exit(1)
     
 
 sys.excepthook       = exception_handler

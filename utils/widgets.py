@@ -327,11 +327,23 @@ class SideNotice:
             self.slot = slot
         self.is_waiting = True
         
+        # 检查是否有可用槽位
+        has_available_slot = False
         if slot == -1 and hasattr(self.master, 'sidenotice_avilable_slots') and len(self.master.sidenotice_avilable_slots) > 0:
             try:
                 self.slot = self.master.sidenotice_avilable_slots.pop(0)
+                has_available_slot = True
             except:
                 Base.log_exc("获取槽位失败")
+        elif slot != -1:
+            has_available_slot = True
+        
+        # 如果没有可用槽位，保持在waiting状态并返回
+        if not has_available_slot:
+            Base.log("D", f"{self.index}号侧边提示无可用槽位，保持等待状态 (文本: {repr(self.notice_text)})", "SideNotice.show")
+            if self not in SideNotice.waiting:
+                SideNotice.waiting.append(self)
+            return
         
         self.is_waiting = False
         self.is_showing = True
@@ -347,7 +359,7 @@ class SideNotice:
         if self.sound:
             Thread(target=lambda: play_sound(self.sound), daemon=True, name="SideNoticeSoundPlayer").start()
             
-        from qfluentwidgets import InfoBarIcon
+        from qfluentwidgets import InfoBarIcon, InfoBarPosition
         
         icon_type = InfoBarIcon.INFORMATION
         
@@ -358,6 +370,7 @@ class SideNotice:
             orient=Qt.Orientation.Horizontal,
             isClosable=self.closeable,
             duration=self.duration,
+            position=InfoBarPosition.BOTTOM_RIGHT,  # 使用固定位置，避免位置冲突
             parent=self.master
         )
         
@@ -365,7 +378,13 @@ class SideNotice:
             try:
                 self.infobar.closeClicked.connect(self.click_command)
             except AttributeError:
-                print(f"警告：InfoBar对象没有可用的点击信号，无法连接点击命令")
+                Base.log("W", f"InfoBar对象没有可用的点击信号，无法连接点击命令", "SideNotice.show")
+        
+        # 连接关闭信号到notice_close方法，确保通知关闭时释放槽位
+        try:
+            self.infobar.closed.connect(self.notice_close)
+        except AttributeError:
+            Base.log("W", f"InfoBar对象没有可用的关闭信号，无法连接关闭处理", "SideNotice.show")
         
         self.infobar.show()
         QCoreApplication.processEvents()
