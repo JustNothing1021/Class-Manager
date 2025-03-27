@@ -50,11 +50,11 @@ class DataKind(Generic[_RT], str):
         value = getattr(self.instance, item)
         if isinstance(value, UUIDKind):
             try:
-                return DataObject.loaded_object_list[self.history_uuid][self.data_type.chunk_type_name][value.uuid]
+                return DataObject.loaded_object_list[(self.history_uuid, self.data_type.chunk_type_name, value.uuid)]
             except KeyError:
                 obj = self.data_type.from_string(
                     self.chunk.get_object_rdata(self.history_uuid, value.uuid, self.data_type.chunk_type_name))
-                DataObject.loaded_object_list[self.history_uuid][self.data_type.chunk_type_name][value.uuid] = obj
+                DataObject.loaded_object_list[(self.history_uuid, self.data_type.chunk_type_name, value.uuid)] = obj
                 setattr(self.instance, item, obj)
                 return obj
         else:
@@ -161,9 +161,11 @@ class DataObject:
     conn_list: Dict[str, Dict[str, sqlite3.Connection]] = {}
     "连接列表，conn_list[数据类型名称][uuid前两位]=连接对象"
 
-    loaded_object_list: Dict[UUIDKind[History], Dict[str, Dict[UUIDKind[ClassDataType], ClassDataType]]] = {}
+    loaded_object_list: Dict[Tuple[UUIDKind[History], str, UUIDKind[ClassDataType]], ClassDataType] = {}
     "加载目标列表"
 
+    load_tasks: List[Tuple[UUIDKind[History], str, UUIDKind[ClassDataType]]] = []
+    "加载任务列表"
 
 
     def __init__(self, data: ClassDataType, chunk: "Chunk", state: Literal["none", "detached", "normal"] = "normal"):
@@ -191,7 +193,6 @@ class DataObject:
                                             class  text,                      -- 数据类型
                                             data   text                       -- 数据
                                     )""")
-                # conn.commit() - 数据库提交操作（还未使用）
             self.conn_list[type_name] = dictionary
 
         conn = self.conn_list[type_name][uuid[:1]]
@@ -217,6 +218,8 @@ class DataObject:
                         INSERT INTO datas (uuid, class, data)
                         VALUES (?, ?, ?)
                     """, (uuid, type_name, string))
+                    conn.commit()
+
                 DataObject.saved_objects += 1
                 return
 
@@ -367,8 +370,8 @@ _DT = TypeVar("_DT")
 class Chunk:
     "数据分组"
 
-    database_connections: Dict[Union[UUIDKind[History], Literal["Current"]], Dict[str, Dict[str, sqlite3.Connection]]] = {}
-    "数据库连接池，database_connection[历史记录uuid][数据类型名][分片名, 对象组uuid第一位] = sqlite3.Connection"
+    database_connections: Dict[Tuple[Union[UUIDKind[History], Literal["Current"]], str, str], sqlite3.Connection] = {}
+    "数据库连接池，database_connection[(历史记录uuid,数据类型名,对象组uuid第一位)] = sqlite3.Connection"
 
 
     def __init__(self, path: str, bound_database: UserDataBase):
@@ -388,10 +391,10 @@ class Chunk:
         :raise ValueError: 数据不存在
         """
         try:
-            conn = self.database_connections[history_uuid][data_type][uuid[:1]]
+            conn = self.database_connections[(history_uuid, data_type, uuid[:1])]
         except KeyError:
             conn = sqlite3.connect(os.path.join(self.path, data_type, f"spilt_{uuid[:1]}.db"), check_same_thread=False)
-            self.database_connections[history_uuid][data_type][uuid[:1]] = conn
+            self.database_connections[(history_uuid, data_type, uuid[:1])] = conn
         result = conn.execute("SELECT data FROM datas WHERE uuid = ?", (uuid,)).fetchone()
         if result is None:
             raise ValueError("数据不存在")
@@ -405,40 +408,48 @@ class Chunk:
         :return: 历史记录
         :raise ValueError: 历史记录不存在
         """
+        failures = []
         def _load_object(uuid: UUIDKind[_DT], data_type: ClassDataType) -> _DT:
+            _id = (history_uuid, data_type.chunk_type_name, uuid)
+
+            DataObject.load_tasks.append(_id)
             try:
                 # 尝试直接从缓存中获取
-                obj = DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid]
+                obj = DataObject.loaded_object_list[_id]
                 sys.__stdout__.write(f"直接读取了一个{obj.__class__.__name__}对象，uuid为{uuid}\n")
+                DataObject.load_tasks.remove(_id)
                 return obj
 
             except KeyError:
                 # 如果不存在的话就从数据库读取
                 try:
                     # 从连接池获取连接
-                    conn = self.database_connections[history_uuid][data_type.chunk_type_name][uuid[:1]]
+                    conn = self.database_connections[(history_uuid, data_type.chunk_type_name, uuid[:1])]
                 except KeyError:    
                     # 如果没连接就直接开一个新的连接放连接池，不用反复开开关关的节约性能（加载完记得relase_connections，清理内存）
                     conn = sqlite3.connect(
                         os.path.join(path, data_type.chunk_type_name, f"spilt_{uuid[:1]}.db"), 
                         check_same_thread=False)
-                    self.database_connections[history_uuid] = {} if history_uuid not in self.database_connections else self.database_connections[history_uuid]
-                    self.database_connections[history_uuid][data_type.chunk_type_name] = {} if data_type.chunk_type_name not in self.database_connections[history_uuid] else self.database_connections[history_uuid][data_type.chunk_type_name]
-                    self.database_connections[history_uuid][data_type.chunk_type_name][uuid[:1]] = conn
+
+                    self.database_connections[(history_uuid, data_type.chunk_type_name, uuid[:1])] = conn
 
 
                 result = conn.execute("SELECT data FROM datas WHERE uuid = ?", (uuid,)).fetchone()
                 if result is None:
-                    raise ValueError("数据不存在")
-                DataObject.loaded_object_list[history_uuid] = {} if history_uuid not in DataObject.loaded_object_list else DataObject.loaded_object_list[history_uuid]
-                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name] = {} if data_type.chunk_type_name not in DataObject.loaded_object_list[history_uuid] else DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name]
-                # obj_shallow_loaded = DataObject(None, self).load_stage1(result[0])
+                    Base.log("W", f"数据不存在，将会返回默认\n数据：{data_type.__qualname__}({uuid})", "Chunk.load_history")
+                    DataObject.load_tasks.remove(_id)
+                    failures.append(_id)
+                    return data_type.new_dummy()
+                DataObject.loaded_object_list
+
+                obj_shallow_loaded = data_type.new_dummy()
                 # 先浅层加载一下，防止触发无限递归
-                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid] = data_type.dummy
-                obj = data_type.from_string(result[0])
+                DataObject.loaded_object_list[_id] = obj_shallow_loaded
                 # 再深层处理，这样就不用担心了
-                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid] = obj
+                DataObject.loaded_object_list[_id].inst_from_string(result[0])
+                obj = DataObject.loaded_object_list[_id]
                 sys.__stdout__.write(f"读取了一个{obj.__class__.chunk_type_name}对象，uuid为{uuid}\n")
+                DataObject.load_tasks.remove(_id)
                 return obj
         ClassObj.LoadUUID = _load_object
         if history_uuid == "Current":
@@ -520,7 +531,7 @@ class Chunk:
             modify_templates: List[ScoreModificationTemplate] = list(self.bound_data.templates.values())
             achivement_templates: List[AchievementTemplate] = list(self.bound_data.achievements.values())
             day_records: List[DayRecord] = list(self.bound_data.weekday_record)
-            current_attendance = self.bound_data.current_day_attendance
+            day_records.append(self.bound_data.current_day_attendance)
             students: List[Student] = []
             modifies: List[ScoreModification] = []
             achievements: List[Achievement] = []
@@ -609,7 +620,6 @@ class Chunk:
             c = max(1, c)
             Base.log("D", F"历史记录中的{uuid}的每日记录保存完成，耗时{time.time() - t}秒，共{c}个，速率{c / (time.time() - t if (time.time() - t) > 0 else 1): .3f}个/秒", "Chunk.save")
             t = time.time()
-            DataObject(current_attendance, self).save(path)
             Base.log("D", F"历史记录中的{uuid}的当前出勤保存完成，时间耗时{time.time() - t}秒", "Chunk.save")
 
             for dict in DataObject.conn_list.values():

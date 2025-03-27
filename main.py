@@ -57,7 +57,7 @@ from   utils.basetypes          import null
 from   utils.system        import system, SystemLogger, output_list, stderr_queue, stdout_queue
 from   utils.high_precision_operation import HighPrecision as Decimal
 
-enable_memory_tracing = False
+enable_memory_tracing = True
 "是否启用内存追踪"
 
 if not enable_memory_tracing:
@@ -193,7 +193,6 @@ def handle_fatal_qt_error(msg: str):
 def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
     """自定义Qt消息处理函数，使用字典映射优化日志记录"""
     # 使用字典映射消息类型到日志级别
-    QMessageLogContext.__weakrefoffset__
     msg_type_map = {
         QtMsgType.QtDebugMsg:    "D",
         QtMsgType.QtInfoMsg:     "I",
@@ -588,7 +587,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
 
-    @profile()
     def __init__(self, *args, class_name="测试班级", current_user=DEFAULT_USER, class_key="CLASS_TEST"):
         """窗口初始化
 
@@ -764,6 +762,12 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.setWindowTitle(f"班寄管理 - {self.target_class.name}")
         self.pushButton_2.clicked.connect(self.skip_all_tips)
         self.terminal_locals = {}
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update)
+        self.update_timer.start(100)
+        self.recent_command_update_timer = QTimer()
+        self.recent_command_update_timer.timeout.connect(self.update_recent_command_btns)
+        self.recent_command_update_timer.start(300)
         self.ListWidget.addItems([
             "占位内容1", 
             "占位内容2",
@@ -1156,7 +1160,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             self.textBrowser.verticalScrollBar().setValue(self.textBrowser.verticalScrollBar().maximum())
             self.displayed_on_the_log_window = self.logged_count
 
-
+    @profile()
     def read_video(self):
         """读取并处理背景视频文件，用于动态背景效果"""
         if not has_cv2:
@@ -1234,9 +1238,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
         painter.drawPixmap(-padding, -padding, self.width() + padding * 2, self.height() + padding * 2, pixmap)
         painter.end()
-        self.update()
 
-    
 
     def script_backup(self, mode:Literal["none", "all", "only_data"]="only_data"):
         """执行应用程序备份
@@ -2186,6 +2188,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             "中午" if 12 <= time.localtime().tm_hour < 14 else
             "下午" if 14 <= time.localtime().tm_hour < 18 else
             "晚上"))
+        
+    def update_recent_command_btns(self):
         try:
             self.PushButton_10.clicked.disconnect(None)
         except RuntimeError:
@@ -2204,7 +2208,6 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.PushButton_10.clicked.connect((lambda: lately_used_commands[-1].callable(self) if lately_used_commands[-1].for_which == "MainWindow" else (lambda: lately_used_commands[-1].callable(lately_used_commands[-1].for_which) if lately_used_commands[-1].for_which else lately_used_commands[-1].callable())) if lately_used_commands else lambda: None)
         self.PushButton_11.clicked.connect((lambda: lately_used_commands[-2].callable(self) if lately_used_commands[-2].for_which == "MainWindow" else (lambda: lately_used_commands[-2].callable(lately_used_commands[-2].for_which) if lately_used_commands[-2].for_which else lately_used_commands[-2].callable())) if len(lately_used_commands) >= 2 else lambda: None)
         self.PushButton_12.clicked.connect((lambda: lately_used_commands[-3].callable(self) if lately_used_commands[-3].for_which == "MainWindow" else (lambda: lately_used_commands[-3].callable(lately_used_commands[-3].for_which) if lately_used_commands[-3].for_which else lately_used_commands[-3].callable())) if len(lately_used_commands) >= 3 else lambda: None)
-
         super().update()
 
 
@@ -4995,7 +4998,14 @@ self.achievement_obs.stop()
 for i in range(15):
     for _ in range(114):
         self.send_modify("wearing_bad", list(self.target_class.students.values()))
-""", "大数据测试")
+""", "大数据测试"),
+
+("""\
+c = Chunk("chunks/test_chunk/example", self.database)
+t = time.time()
+c.load_history()
+print("时间:", time.time() - t)
+""", "测试数据保存")
         ]   
         self.comboBox.clear()
         self.comboBox.addItem("快捷命令")
