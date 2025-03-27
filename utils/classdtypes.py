@@ -49,6 +49,34 @@ def get_random_template(templates: "OrderedKeyList[ClassObj.ScoreModificationTem
     return random.choice(templates)
 
 
+ClassDataType = Union["Student", "Class", "Group", 
+                     "AttendanceInfo", 
+                      "ScoreModification", "ScoreModificationTemplate",
+                      "Achievement", "AchievementTemplate", 
+                      "DayRecord"]
+
+
+_UT = TypeVar("_UT")
+
+
+class UUIDKind(Generic[_UT], str):
+    "uuid类型, UUIDKind[Student]代表这个uuid可以加载出一个学牲"
+    def __init__(self, uuid: str, type: ClassDataType):
+        self.uuid = uuid
+        self.type_name = type.chunk_type_name
+    def __hash__(self):
+        return hash(self.uuid)
+    def __eq__(self, other):
+        return isinstance(other, UUIDKind) and self.uuid == other.uuid
+    def __repr__(self):
+        return f"UUIDKind({self.uuid})"
+    def __str__(self):
+        return self.uuid
+
+
+
+    
+
 class ClassObj(Base):     
     "班级数据对象"
 
@@ -61,31 +89,13 @@ class ClassObj(Base):
     achievement_observer_update_rate = 0
     "成就状态侦测器更新频率（单位：次/秒）"
 
+    archive_uuid: Optional[str] = None
+
     class OpreationError(Exception):"修改出现错误。"
 
-    class DummyStudent(Object, SupportsKeyOrdering):
-        "一个工具人"
-        def __init__(self):
-                
-            self.name = "我是工具人"
-            self.num = 0
-            self.score = 0.0
-            self.belongs_to:str = "CLASS_TEST"
-            self.highest_score:float = 0.0
-            self.lowest_score:float = 0.0
-            self.total_score = 0.0
-            self.last_reset = 0.0
-            "分数上次重置的时间"
-            self.highest_score_cause_time = 0.0
-            self.lowest_score_cause_time = 0.0
-            self.achievements = {}
-            "所获得的所有成就"
-            self.belongs_to_group = "group_0"
-            "所属小组"
-            self.last_reset_info = None
-            "上次重置的信息"
-            self.history = {}
-            "历史分数记录"
+    LoadUUID: Callable[[UUIDKind[ClassDataType]], ClassDataType]
+    "加载uuid的函数，传入一个uuid和数据类型，返回一个ClassDataType，在utils.dataloader里面实现"
+
 
 
 # Tip:如果需要在类型标注中使用尚未定义的类，可以用引号括起来
@@ -95,8 +105,17 @@ class ClassObj(Base):
             chunk_type_name: Literal["Student"] = "Student"
 
             # score_dtype = HighPrecision
-            score_dtype = int8
+            score_dtype = float
             "记录分数的数据类型（还没做完别乱改）"
+
+            last_reset_info_keep_times = 3
+            "在存档中上次重置信息的天数"
+
+            dummy: "Student" = None
+
+            @staticmethod
+            def new_dummy():
+                return Student("dummy", 0, 0.0, "dummy")
 
             def __init__(self, 
                         name:                     str, 
@@ -150,9 +169,23 @@ class ClassObj(Base):
                 "所获得的所有成就， key为时间戳（utc*1000）"
                 self.belongs_to_group = belongs_to_group
                 "所属小组"
-                self.last_reset_info = ClassObj.DummyStudent() if last_reset_info is None else last_reset_info
+                self._last_reset_info = None if last_reset_info is None else last_reset_info
                 "上次重置的信息"
+                self.archive_uuid = ClassObj.archive_uuid
+                "归档uuid"
 
+
+            @property
+            def last_reset_info(self):
+                "上次重置的信息"
+                return self._last_reset_info if self._last_reset_info is not None else DummyStudent()
+            
+            @last_reset_info.setter
+            def last_reset_info(self, value):
+                self._last_reset_info = value
+
+
+            
             @property
             def highest_score(self):
                 "最高分"
@@ -430,22 +463,45 @@ class ClassObj(Base):
                     "num":                      self.num,
                     "score":                    float(self.score),
                     "belongs_to":               self.belongs_to,
-                    "history":                  [h.uuid for h in self.history.values()],
+                    "history":                  [(h.execute_time_key, h.uuid) for h in self.history.values()],
                     "last_reset":               self.last_reset,
-                    "achievements":             [a.uuid for a in self.achievements.values()],
+                    "achievements":             [(a.time_key, a.uuid) for a in self.achievements.values()],
                     "highest_score":            self.highest_score,
                     "lowest_score":             self.lowest_score,
                     "highest_score_cause_time": self.highest_score_cause_time,
                     "lowest_score_cause_time":  self.lowest_score_cause_time,
                     "belongs_to_group":         self.belongs_to_group,
-                    "total_score":              self.total_score
+                    "total_score":              self.total_score,
+                    "last_reset_info":          self.last_reset_info.uuid if self.last_reset_info else None,
+                    "uuid":                     self.uuid,
+                    "archive_uuid":             self.archive_uuid
                 })
             
+            @staticmethod
+            def from_string(string: str) -> "ClassObj.Student":
+                "将字符串转换为学生对象。"
+                data = json.loads(string)
+                if data["type"] != Student.chunk_type_name:
+                    raise TypeError(f"类型不匹配：{data['type']} != {Student.chunk_type_name}")
+                obj = ClassObj.Student(
+                    name=data["name"],
+                    num=data["num"],
+                    score=Student.score_dtype(data["score"]),
+                    belongs_to=data["belongs_to"],
+                    history={k: ClassObj.LoadUUID(v, ScoreModification) for k, v in data["history"]},
+                    last_reset=data["last_reset"],
+                    highest_score=data["highest_score"],
+                    lowest_score=data["lowest_score"],
+                    achievements={k: ClassObj.LoadUUID(v, Achievement) for k, v in data["achievements"]},
+                    total_score=data["total_score"],
+                    highest_score_cause_time=data["highest_score_cause_time"],
+                    lowest_score_cause_time=data["lowest_score_cause_time"],
+                    belongs_to_group=data["belongs_to_group"],
+                    last_reset_info=ClassObj.LoadUUID(data["last_reset_info"], Student)
+                )
 
-            
-
-
-
+                obj.uuid = data["uuid"]
+                obj.archive_uuid = data["archive_uuid"]
 
     class SimpleStudent(Student):
             @overload
@@ -464,7 +520,11 @@ class ClassObj(Base):
     class Group(Object):
         "一个小组"
         chunk_type_name: Literal["Group"] = "Group"
-
+        dummy: "Group" = None
+        @staticmethod
+        def new_dummy():
+            "创建一个空的小组"
+            return Group("dummy", "dummy", Student.new_dummy(), [], "dummy")
         def __init__(self, 
                     key:          str, 
                     name:         str, 
@@ -492,6 +552,8 @@ class ClassObj(Base):
             "详细描述"
             self.belongs_to = belongs_to
             "所属班级"
+            self.archive_uuid = ClassObj.archive_uuid
+            "归档uuid"
         
         @property
         def total_score(self):
@@ -523,20 +585,49 @@ class ClassObj(Base):
                     "leader": self.leader.uuid,
                     "members": [s.uuid for s in self.members],
                     "belongs_to": self.belongs_to,
-                    "further_desc": self.further_desc
-
+                    "further_desc": self.further_desc,
+                    "uuid": self.uuid,
+                    "archive_uuid": self.archive_uuid
                 }
             )
+        
+        @staticmethod
+        def from_string(string: str):
+            "将字符串转化为小组对象。"
+            string = json.loads(string)
+            if string["type"] != Group.chunk_type_name:
+                raise TypeError(f"类型不匹配：{string['type']} != {Group.chunk_type_name}")
+            obj = Group(
+                key=string["key"],
+                name=string["name"],
+                leader=ClassObj.LoadUUID(string["leader"], Student),
+                members=[ClassObj.LoadUUID(s, Student) for s in string["members"]],
+                belongs_to=string["belongs_to"],
+                further_desc=string["further_desc"]
+            )
+            obj.uuid = string["uuid"]
+            obj.archive_uuid = string["archive_uuid"]
+
+            return obj
+
+
         
         def __repr__(self):
             return f"Group(key={repr(self.key)}, name={repr(self.name)}, leader={repr(self.leader)}, members={repr(self.members)}, belongs_to={repr(self.belongs_to)}, further_desc={repr(self.further_desc)}"
         
 
 
-
+    @staticmethod
+    def DummyStudent():
+        return Student("工具人", 0, 0, "DummyStudent")
+    
     class ScoreModificationTemplate(Object, SupportsKeyOrdering):
             "分数加减操作的模板。"
             chunk_type_name: Literal["ScoreModificationTemplate"] = "ScoreModificationTemplate"
+            dummy: "ScoreModificationTemplate" = None
+            @staticmethod
+            def new_dummy():
+                return ScoreModificationTemplate("dummy", 0, "dummy")
             def __init__(self, 
                         key:             str, 
                         modification:    float, 
@@ -560,6 +651,7 @@ class ClassObj(Base):
                 self.desc = description
                 self.cant_replace = cant_replace
                 self.is_visible = is_visible
+                self.archive_uuid = ClassObj.archive_uuid
 
             def __repr__(self):
                 return (f"ScoreModificationTemplate("
@@ -575,13 +667,36 @@ class ClassObj(Base):
                     {
                         "type": self.chunk_type_name,
                         "key": self.key,
-                        "mod": self.mod,
+                        "modification": self.mod,
                         "title": self.title,
                         "description": self.desc,
                         "cant_replace": self.cant_replace,
-                        "is_visible": self.is_visible
+                        "is_visible": self.is_visible,
+                        "uuid": self.uuid,
+                        "archive_uuid": self.archive_uuid
                     }
                 )
+            
+
+            
+            @staticmethod
+            def from_string(string: str):
+                "将字符串转化为分数加减模板对象。"
+                string = json.loads(string)
+                if string["type"] != ScoreModificationTemplate.chunk_type_name:
+                    raise TypeError(f"类型不匹配：{string['type']} != {ScoreModificationTemplate.chunk_type_name}")
+                obj = ScoreModificationTemplate(
+                    key=string["key"],
+                    modification=string["modification"],
+                    title=string["title"],
+                    description=string["description"],
+                    cant_replace=string["cant_replace"],
+                    is_visible=string["is_visible"]
+                )
+                obj.uuid = string["uuid"]
+                obj.archive_uuid = string["archive_uuid"]
+
+                return obj
 
 
 
@@ -589,6 +704,10 @@ class ClassObj(Base):
     class ScoreModification(Object):
             "分数修改记录。"
             chunk_type_name: Literal["ScoreModification"] = "ScoreModification"
+            dummy: "ScoreModification" = None
+            @staticmethod
+            def new_dummy():
+                return ScoreModification(ScoreModificationTemplate.new_dummy(), Student.new_dummy())
             def __init__(self,  template:     "ClassObj.ScoreModificationTemplate",
                                 target:       "ClassObj.Student",
                                 title:        Optional[str]                = None,
@@ -611,36 +730,29 @@ class ClassObj(Base):
                 """
                 if create_time is None:
                     create_time = Base.gettime()
-                logstr = "新的待执行的加减分对象创建, "
                 self.temp = template
 
-                logstr += "模板信息："+("").join(str(self.temp.__str__()).splitlines(True)).strip().replace("\n",", ") + "; "
 
                 if title == self.temp.title or title is None:
                     self.title = self.temp.title
                 else:
-                    logstr += "该加减分对象的原因有额外修改：" + title + "; "
                     self.title = title
 
                 if desc == self.temp.desc or desc is None:
                     self.desc = self.temp.desc
                 else:
-                    logstr += "该加减分对象的详情有额外修改：" + desc + "; "
                     self.desc = desc
 
                 if mod == self.temp.mod or mod is None:
                     self.mod = self.temp.mod
                 else:
-                    logstr += "该加减分对象的分数变化有额外修改：" + str(mod) + "; "
                     self.mod = mod
-
-                
                 self.target = target
-                logstr += f"针对的学生：{target._name}({target._num}号，目前{target._score}分)"
                 self.execute_time = execute_time
                 self.create_time = create_time
                 self.executed = executed
-                Base.log("I",logstr + ", 模板创建成功！","ScoreModification.__init__")
+                self.archive_uuid = ClassObj.archive_uuid
+                
             
 
             def __repr__(self):
@@ -662,19 +774,14 @@ class ClassObj(Base):
                     self.execute_time_key = int(time.time() * 1000)
                     "执行时间utc*1000"
                     if self.target.highest_score < self.target.score + self.mod:
-                        Base.log("I",f"预计刷新最高分：{self.target.highest_score} -> {self.target.score + self.mod}","ScoreModification.execute")
                         self.target.highest_score = self.target.score + self.mod
                         self.target.highest_score_cause_time = self.execute_time_key
-                        Base.log("I",f"修改完成，execute_time_key={self.execute_time_key}","ScoreModification.execute")
 
                     if self.target.lowest_score > self.target.score + self.mod:
-                        Base.log("I",f"预计刷新最低分：{self.target.highest_score} -> {self.target.score + self.mod}","ScoreModification.execute")
                         self.target.lowest_score = self.target.score + self.mod
                         self.target.lowest_score_cause_time = self.execute_time_key 
-                        Base.log("I",f"修改完成，execute_time_key={self.execute_time_key}","ScoreModification.execute")
 
                     self.target.score += self.mod
-                    Base.log("I",f"执行完成，分数变化：{self.target._score - self.mod} -> {self.target._score}","ScoreModification.execute")
                     self.executed = True                
                     self.target.history[self.execute_time_key] = self
                     return True
@@ -694,7 +801,6 @@ class ClassObj(Base):
                     Base.log("W","当前操作未执行，无法撤回","ScoreModification.retract")
                     return False, "并不在本周历史中"
                 if self.executed:
-                    Base.log("I","尝试撤回上次操作...","ScoreModification.execute")
                     try:
                         if self.mod < 0:
                             findscore = 0.0
@@ -715,12 +821,9 @@ class ClassObj(Base):
                                 lowestscore = 0
 
                             if self.target.lowest_score_cause_time != lowesttimekey:
-                                Base.log("I",f"更新lowest_score_cause_time：{self.target.lowest_score_cause_time} -> {lowesttimekey}","ScoreModification.execute")
                                 self.target.lowest_score_cause_time = lowesttimekey
 
                             if self.target.lowest_score != lowestscore:
-                                Base.log("I",f"更新lowest_score：{self.target.lowest_score} -> "
-                                        f"{lowestscore}","ScoreModification.execute")
                                 self.target.lowest_score = lowestscore
                             
                             
@@ -739,21 +842,13 @@ class ClassObj(Base):
                             if self.execute_time_key == highesttimekey:
                                 highestscore = 0
                             if self.target.highest_score_cause_time != highesttimekey:
-                                Base.log("I", f"更新highest_score_cause_time："
-                                            f"{self.target.highest_score_cause_time} -> {highesttimekey}", 
-                                            "ScoreModification.execute")
                                 self.target.highest_score_cause_time = highesttimekey 
 
                             if self.target.highest_score != highestscore:
-                                Base.log("I",f"更新highest_score：{self.target.highest_score} -> "
-                                        f"{highestscore}","ScoreModification.execute")
                                 self.target.highest_score = highestscore
 
 
-                        score_orig = self.target.score
                         self.target.score -= self.mod
-                        Base.log("I",f"撤销完成，分数变化：{score_orig} -> {self.target._score}",
-                                "ScoreModification.retract")
                         self.executed = False
                         self.execute_time = None
                         del self
@@ -781,14 +876,43 @@ class ClassObj(Base):
                         "create_time":       self.create_time,
                         "execute_time":      self.execute_time,
                         "execute_time_key":  self.execute_time_key,
+                        "uuid":              self.uuid,
+                        "archive_uuid":      self.archive_uuid
                     }
                 )
+            
+            @staticmethod
+            def from_string(string: str):
+                "将字符串转换为分数修改对象。"
+                d = json.loads(string)
+                if d["type"] != ClassObj.ScoreModification.chunk_type_name:
+                    raise ValueError(f"类型不匹配：{d['type']} != {ClassObj.ScoreModification.chunk_type_name}")
+                obj = ClassObj.ScoreModification(
+                    template=ClassObj.LoadUUID(d["template"], ScoreModificationTemplate),
+                    target=ClassObj.LoadUUID(d["target"], Student),
+                    title=d["title"],
+                    mod=d["mod"],
+                    execute_time=d["execute_time"],
+                    create_time=d["create_time"],
+                    executed=d["executed"],
+                    desc=d["desc"]
+                )
+                obj.uuid = d["uuid"]
+                obj.archive_uuid = d["archive_uuid"]
+                obj.execute_time_key = d["execute_time_key"]
+                return obj
+                
+
 
 
 
     class HomeworkRule(Object, SupportsKeyOrdering):
         "作业规则"
         chunk_type_name: Literal["HomeworkRule"] = "HomeworkRule"
+        dummy: "HomeworkRule" = None
+        @staticmethod
+        def new_dummy():
+            return HomeworkRule("dummy", "dummy", "dummy", {})
         def __init__(self, 
                     key:           str, 
                     subject_name:  str, 
@@ -806,6 +930,7 @@ class ClassObj(Base):
             self.subject_name = subject_name
             self.ruler = ruler
             self.rule_mapping = rule_mapping
+            self.archive_uuid = ClassObj.archive_uuid
 
 
         def to_string(self):
@@ -816,8 +941,25 @@ class ClassObj(Base):
                     "subject_name":     self.subject_name,
                     "ruler":            self.ruler,
                     "rule_mapping":     dict([(n, t.uuid) for n, t in self.rule_mapping.items()]),
+                    "uuid":             self.uuid,
+                    "archive_uuid":      self.archive_uuid
                 }
             )
+        
+        @staticmethod
+        def from_string(s: str):
+            d = json.loads(s)
+            if d["type"] != ClassObj.HomeworkRule.chunk_type_name:
+                raise ValueError(f"类型不匹配：{d['type']} != {ClassObj.HomeworkRule.chunk_type_name}")
+            obj = ClassObj.HomeworkRule(
+                key=d["key"],
+                subject_name=d["subject_name"],
+                ruler=d["ruler"],
+                rule_mapping={n: ClassObj.LoadUUID(t, ScoreModificationTemplate) for n, t in d["rule_mapping"].items()}
+            )
+            obj.uuid = d["uuid"]
+            obj.archive_uuid = d["archive_uuid"]
+            return obj
 
 
 
@@ -825,6 +967,11 @@ class ClassObj(Base):
     class Class(Object, SupportsKeyOrdering):
             "一个班级"
             chunk_type_name: Literal["Class"] = "Class"
+            dummy: "Class" = None
+            @staticmethod
+            def new_dummy():
+                return Class("工具人班寄", "dummy", {}, "dummy", {}, {}, {})
+
             def __init__(self, 
                         name:            str, 
                         owner:           str, 
@@ -851,6 +998,7 @@ class ClassObj(Base):
                 self.key      = key
                 self.cleaning_mapping = cleaning_mapping if cleaning_mapping is not None else {}
                 self.homework_rules = OrderedKeyList(homework_rules) if homework_rules is not None else OrderedKeyList([])
+                self.archive_uuid = ClassObj.archive_uuid
 
             def __repr__(self):
                 return f"Class(name={self.name.__repr__()}, owner={self.owner.__repr__()}, students={self.students.__repr__()}, key={self.key.__repr__()}, cleaning_mapping={self.cleaning_mapping.__repr__()})"
@@ -968,13 +1116,38 @@ class ClassObj(Base):
                         "type":      self.chunk_type_name,
                         "key":       self.key,
                         "name":      self.name,
-                        "onwer":       self.owner,
-                        "students":  [s.uuid for s in self.students.values()],
-                        "groups":    [g.uuid for g in self.groups.values()],
+                        "owner":       self.owner,
+                        "students":  [(s.num, s.uuid) for s in self.students.values()],
+                        "groups":    [(g.key, g.uuid) for g in self.groups.values()],
                         "cleaning_mapping": [(k, [(t, [_s.uuid for _s in s]) for t, s in v.items()]) for k, v in self.cleaning_mapping.items()],
-                        "homework_rules": {n: t.uuid for n, t in self.homework_rules.items()}
+                        "homework_rules": [(n, h.to_string()) for n, h in self.homework_rules.items()],
+                        "uuid":      self.uuid,
+                        "archive_uuid": self.archive_uuid,
                     }
                 )
+            
+            @staticmethod
+            def from_string(string: str) -> "ClassObj.Class":
+                "从字符串加载班级对象。"
+                d = json.loads(string)
+                if d["type"] != Class.chunk_type_name:
+                    raise ValueError(f"类型不匹配：{d['type']} != {Class.chunk_type_name}")
+                obj = Class(
+                    name=d["name"],
+                    owner=d["owner"],
+                    students={n: ClassObj.LoadUUID(s, ClassObj.Student) for n, s in d["students"]},
+                    key=d["key"],
+                    groups={k: ClassObj.LoadUUID(g, ClassObj.Group) for k, g in d["groups"]},
+                    cleaning_mapping={k: {t: [ClassObj.LoadUUID(s, ClassObj.Student) for s in s] for t, s in v.items()} for k, v in d["cleaning_mapping"]},
+                    homework_rules={n: ClassObj.HomeworkRule.from_string(h) for n, h in d["homework_rules"]}
+                )
+                obj.uuid = d["uuid"]
+                obj.archive_uuid = d["archive_uuid"]
+                return obj
+
+
+
+
 
 
 
@@ -1013,6 +1186,10 @@ class ClassObj(Base):
 
     class AchievementTemplate(Object, SupportsKeyOrdering):
             chunk_type_name: Literal["AchievementTemplate"] = "AchievementTemplate"
+            dummy: "AchievementTemplate" = None
+            @staticmethod
+            def new_dummy():
+                return AchievementTemplate("dummy", "这个成就永远不会被达成", "就是不可能达成", others=lambda _: False)
             def __init__(self,     
                         key:str,
                         name:str,
@@ -1118,10 +1295,12 @@ class ClassObj(Base):
                 self.icon = icon
                 self.further_info = further_info
                 self.condition_info = condition_info
+                self.archive_uuid = ClassObj.archive_uuid
 
-            def achieved(self, student: "ClassObj.Student", class_obs:"ClassStatusObserver"):
+            def achieved_by(self, student: "ClassObj.Student", class_obs:"ClassStatusObserver"):
                 """
-                判断一个成就是否达成
+                判断一个成就是否被一个学生达成
+
                 :param student: 学生
                 :param class_obs: 班级状态侦测器
                 :raise ObserverError: lambda或者function爆炸了
@@ -1185,6 +1364,8 @@ class ClassObj(Base):
 
 
                 return True
+            
+            achieved = achieved_by
             
             def condition_desc(self, class_obs:"ClassStatusObserver"):
                 """
@@ -1309,14 +1490,37 @@ class ClassObj(Base):
                     
                     if hasattr(self, "other"):
                         obj["other"] = str(base64.b64encode(pickle.dumps(self.other)))
+                    obj["uuid"] = self.uuid
+                    obj["archive_uuid"] = self.archive_uuid
 
                     return json.dumps(obj)
+            
+
+            @staticmethod
+            def from_string(string: str):
+                "从字符串加载成就模板对象。"
+                d: Dict[str, Any] = json.loads(string)
+                if d["type"] != AchievementTemplate.chunk_type_name:
+                    raise ValueError(f"类型不匹配：{d['type']} != {AchievementTemplate.chunk_type_name}")
+                if "other" in d:
+                    d["other"] = pickle.loads(base64.b64decode(d["other"]))
+                uuid = d.pop("uuid")
+                archive_uuid = d.pop("archive_uuid")
+                obj = AchievementTemplate(**d)
+                obj.uuid = uuid
+                obj.archive_uuid = archive_uuid
+                return obj
 
 
 
     class Achievement(Object):
         "一个真实被达成的成就"
         chunk_type_name: Literal["Achievement"] = "Achievement"
+        dummy: "Achievement" = None
+        @staticmethod
+        def new_dummy():
+            return Achievement(AchievementTemplate.new_dummy(), Student.new_dummy(), "1970-01-01 00:00:00.000", 0)
+
         def __init__(self, 
                      template:      "ClassObj.AchievementTemplate", 
                      target:        "ClassObj.Student", 
@@ -1339,6 +1543,7 @@ class ClassObj(Base):
                 self.temp = template
                 self.target = target
                 self.sound = self.temp.sound
+                self.archive_uuid = ClassObj.archive_uuid
 
         def give(self):
                 "发放成就"
@@ -1358,13 +1563,40 @@ class ClassObj(Base):
                     "time_key": self.time_key,
                     "template": self.temp.uuid,
                     "target": self.target.uuid,
-                    "sound": self.sound
+                    "sound": self.sound,
+                    "uuid": self.uuid,
+                    "archive_uuid": self.archive_uuid
                 }
             )
+        
+        @staticmethod
+        def from_string(string: str):
+            "从"
+            d: Dict[str, Any] = json.loads(string)
+            if d["type"] != Achievement.chunk_type_name:
+                raise ValueError(f"类型不匹配：{d['type']} != {Achievement.chunk_type_name}")
+            obj = Achievement(
+                template=ClassObj.LoadUUID(d["template"], AchievementTemplate),
+                target=ClassObj.LoadUUID(d["target"], Student),
+                reach_time=d["time"],
+                reach_time_key=d["time_key"]
+            )
+            obj.sound = d["sound"]
+            obj.uuid = d["uuid"]
+            obj.archive_uuid = d["archive_uuid"]
+            return obj
+
+
+
+
 
     class AttendanceInfo(Object):
         "考勤信息"
         chunk_type_name: Literal["AttendanceInfo"] = "AttendanceInfo"
+        dummy: "AttendanceInfo" = None
+        @staticmethod
+        def new_dummy():
+            return AttendanceInfo()
         def __init__(self, 
                     target_class:    str                   = "CLASS_TEST",
                     is_early:        List["ClassObj.Student"] = None, 
@@ -1417,6 +1649,8 @@ class ClassObj(Base):
             "早退的学生"
             self.is_leave_late = is_leave_late
             "晚退的学生"
+            self.archive_uuid = ClassObj.archive_uuid
+            "存档UUID"
 
         def to_string(self) -> str:
             return json.dumps({
@@ -1428,8 +1662,30 @@ class ClassObj(Base):
                 "is_absent":      [s.uuid for s in self.is_absent],
                 "is_leave":       [s.uuid for s in self.is_leave],
                 "is_leave_early": [s.uuid for s in self.is_leave_early],
-                "is_leave_late":  [s.uuid for s in self.is_leave_late]
+                "is_leave_late":  [s.uuid for s in self.is_leave_late],
+                "uuid":           self.uuid,
+                "archive_uuid":   self.archive_uuid
             })
+        
+        @staticmethod
+        def from_string(string: str) -> "ClassObj.AttendanceInfo":
+            "从字符串加载出勤信息对象。"
+            d = json.loads(string)
+            if d["type"] != AttendanceInfo.chunk_type_name:
+                raise ValueError(f"类型不匹配：{d['type']} != {AttendanceInfo.chunk_type_name}")
+            obj = AttendanceInfo(
+                target_class=d["target_class"],
+                is_early=[ClassObj.LoadUUID(s, Student) for s in d["is_early"]],
+                is_late=[ClassObj.LoadUUID(s, Student) for s in d["is_late"]],
+                is_late_more=[ClassObj.LoadUUID(s, Student) for s in d["is_late_more"]],
+                is_absent=[ClassObj.LoadUUID(s, Student) for s in d["is_absent"]],
+                is_leave=[ClassObj.LoadUUID(s, Student) for s in d["is_leave"]],
+                is_leave_early=[ClassObj.LoadUUID(s, Student) for s in d["is_leave_early"]],
+                is_leave_late=[ClassObj.LoadUUID(s, Student) for s in d["is_leave_late"]]
+            )
+            obj.uuid = d["uuid"]
+            obj.archive_uuid = d["archive_uuid"]
+            return obj
 
 
         def is_normal(self, target_class: "ClassObj.Class") -> List["ClassObj.Student"]:
@@ -1452,6 +1708,12 @@ class ClassObj(Base):
     class DayRecord(Object):
         "一天的记录"
         chunk_type_name: Literal["DayRecord"] = "DayRecord"
+        dummy: "DayRecord" = None
+
+        @staticmethod
+        def new_dummy():
+            return DayRecord(Class.new_dummy(), 0, 0, AttendanceInfo.new_dummy())
+
         def __init__(self, 
                      target_class:   "ClassObj.Class",
                      weekday:         int, 
@@ -1468,6 +1730,8 @@ class ClassObj(Base):
             self.utc = utc
             self.attendance_info = attendance_info
             self.target_class = target_class
+            self.archive_uuid = ClassObj.archive_uuid
+
 
         def to_string(self):
             if isinstance(self.target_class, dict):
@@ -1478,9 +1742,25 @@ class ClassObj(Base):
                     "target_class":     self.target_class.uuid,
                     "weekday":          self.weekday,
                     "utc":              self.utc,
-                    "attendance_info":  self.attendance_info.uuid
+                    "attendance_info":  self.attendance_info.uuid,
+                    "uuid":             self.uuid,
+                    "archive_uuid":     self.archive_uuid
                 }
             )
+        
+        @staticmethod
+        def from_string(string: str) -> "ClassObj.DayRecord":
+            "从字符串加载每日记录对象。"
+            d = json.loads(string)
+            if d["type"] != DayRecord.chunk_type_name:
+                raise ValueError(f"类型不匹配：{d['type']} != {DayRecord.chunk_type_name}")
+            obj = DayRecord(
+                target_class=d["target_class"],
+                weekday=d["weekday"],
+                utc=d["utc"],
+                attendance_info=ClassObj.LoadUUID(d["attendance_info"], AttendanceInfo),
+            )
+            obj.uuid = d["uuid"]
 
 
     class History(Object):
@@ -1494,6 +1774,7 @@ class ClassObj(Base):
             self.time = save_time or time.time()
             self.weekdays: Dict[float, DayRecord] = {d.utc: d for d in weekdays} \
                 if isinstance(weekdays, list) else weekdays
+            self.uuid = self.archive_uuid = ClassObj.archive_uuid   # IMPORTANT: 这里的对象uuid和归档uuid是一样的
 
         def __repr__(self):
             return  f"<History object at time {self.time:.3f}>"
@@ -1507,10 +1788,28 @@ class ClassObj(Base):
                 {
                     "classes":  {k: v.uuid for k, v in self.classes.items()},
                     "time":     self.time,
-                    "weekdays": {k: v.uuid for k, v in self.weekdays.items()}
+                    "weekdays": {k: v.uuid for k, v in self.weekdays.items()},
+                    "uuid":     self.uuid,
+                    "archive_uuid":     self.archive_uuid
                 }
             )
         
+        @staticmethod
+        def from_string(s: str) -> "ClassObj.History":
+            d = json.loads(s)
+            if d["type"] != History.chunk_type_name:
+                raise ValueError(f"类型不匹配：{d['type']} != {History.chunk_type_name}")
+            obj = History(
+                classes={k: ClassObj.LoadUUID(v, Class) for k, v in d["classes"].items()},
+                weekdays={k: ClassObj.LoadUUID(v, DayRecord) for k, v in d["weekdays"].items()},
+                save_time=d["time"]
+            )
+            obj.uuid = d["uuid"]
+            obj.archive_uuid = d["archive_uuid"]
+            assert obj.uuid == obj.archive_uuid, ("对于一个历史记录, 它的对象uuid和归档uuid必须保持一致"
+            f"（当前一个是{obj.uuid}, 另一个是{obj.archive_uuid}）")
+            return obj
+
 
 
 class ClassStatusObserver(Object):
@@ -1576,8 +1875,10 @@ class AchievementStatusObserver(Object):
 # Base.clear_oldfile(Base.log_file_keepcount)
 
 Student = ClassObj.Student
+
+
 DummyStudent = ClassObj.DummyStudent
-StrippedStudent = ClassObj.SimpleStudent
+StrippedStudent = ClassObj.DummyStudent
 
 Class = ClassObj.Class
 Group = ClassObj.Group
@@ -1598,17 +1899,14 @@ Day = ClassObj.DayRecord
 ClassData = ClassObj.ClassData
 History = ClassObj.History
 
-ClassDataType = Union[Student, Class, Group, 
-                      AttendanceInfo, 
-                      ScoreModification, ScoreModificationTemplate,
-                      Achievement, AchievementTemplate, 
-                      DayRecord]
 
-default_score_template = ScoreModificationTemplate("如果你看到了这行信息，多半是加载存档出问题了", 0, "默认模板", "这个模板没用，只是占位用的")
-default_student = Student("如果你看到了这行信息，多半是加载存档出问题了", 114514, 1919810, "CLASS_1145")
-default_achievement_template = AchievementTemplate("如果你看到了这行信息，多半是加载存档出问题了", 
-                                                   "一个不可能达成的成就", 
-                                                   "这个成就正如字面意思，是不可能达成的", 
-                                                   condition_info="别看了，不可能达成就是不可能达成", 
-                                                   further_info="我触发条件都写的lambda: 0.1 + 0.2 == 0.3，怎么可能达成", 
-                                                   others=lambda: 0.1 + 0.2 == 0.3) # NOSONAR; disable-python:S1244(浮点数精度测试，纯闲的)
+Student.dummy = default_student = Student.new_dummy()
+Class.dummy = default_class = Class.new_dummy()
+Group.dummy = default_group = Group.new_dummy()
+Day.dummy = default_day = Day.new_dummy()
+HomeworkRule.dummy = default_homework_rule = HomeworkRule.new_dummy()
+ScoreModification.dummy = default_score_modification = ScoreModification.new_dummy()
+ScoreModificationTemplate.dummy = default_score_template = ScoreModificationTemplate.new_dummy()
+Achievement.dummy = default_achievement = Achievement.new_dummy()
+AchievementTemplate.dummy = default_achievement_template = AchievementTemplate.new_dummy()
+

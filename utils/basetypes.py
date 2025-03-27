@@ -386,9 +386,6 @@ def cinttype(dtype: _cinttype, name: Optional[str] = None):
             return cinttype(self._dtype, self._tpname)(int(other) ^ self._data.value)
 
 
-
-            
-
     return _CIntType
 
 
@@ -402,7 +399,6 @@ uint32 = unsigned_integer = cinttype(c_uint32, "unsigned_integer")
 uint64 = unsigned_qword   = cinttype(c_uint64, "unsigned_qword")
 
 
-    
 
 
 
@@ -711,8 +707,9 @@ class Object(object):
     @property
     def uuid(self):
         "获取对象的UUID"
-        if not hasattr(self, "_uuid"):
+        if not hasattr(self, "_uuid") or not getattr(self, "_uuid"):
             self._uuid = gen_uuid()
+
         return self._uuid
     
     @uuid.setter

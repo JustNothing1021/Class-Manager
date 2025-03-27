@@ -57,6 +57,32 @@ from   utils.basetypes          import null
 from   utils.system        import system, SystemLogger, output_list, stderr_queue, stdout_queue
 from   utils.high_precision_operation import HighPrecision as Decimal
 
+enable_memory_tracing = False
+"是否启用内存追踪"
+
+if not enable_memory_tracing:
+    def profile(precision=4):   # NOSONAR; NOQA: disable=unused-argument
+        def decorator(func):
+            return func
+        return decorator
+        
+    def memory_usage(*args, **kwargs): # NOSONAR; NOQA: disable=unused-argument
+        return [0]
+else:
+    try:
+        from memory_profiler import profile, memory_usage
+    except ImportError:
+        warnings.warn("memory_profiler模块未安装, 相关性能分析功能将被禁用", RuntimeWarning)
+        def profile(precision=4):   # NOSONAR; NOQA: disable=unused-argument
+            def decorator(func):
+                return func
+            return decorator
+        
+        def memory_usage(*args, **kwargs): # NOSONAR; NOQA: disable=unused-argument
+            return [0]
+        
+        Base.log("W", "memory_profiler模块未安装,相关性能分析功能将被禁用")
+
 
 CLIENT_VERSION:      str          = VERSION_INFO["client_version"]
 "应用程序界面版本"
@@ -72,8 +98,7 @@ base_sys.stdout                   = Base.captured_stdout   # SystemLogger
 "重定向的核心模块标准输出"
 base_sys.stderr                   = Base.captured_stderr   # SystemLogger
 "重定向的核心模块错误输出"
-# log_queue:            Queue       = Base.window_log_queue
-# "主界面日志窗口队列"
+
 widget:              "MainWindow"
 "主窗口实例"
 ctrlc_times = 0
@@ -168,6 +193,7 @@ def handle_fatal_qt_error(msg: str):
 def qt_messagehandler(mode: QtMsgType, context: QMessageLogContext, msg: str):
     """自定义Qt消息处理函数，使用字典映射优化日志记录"""
     # 使用字典映射消息类型到日志级别
+    QMessageLogContext.__weakrefoffset__
     msg_type_map = {
         QtMsgType.QtDebugMsg:    "D",
         QtMsgType.QtInfoMsg:     "I",
@@ -562,7 +588,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
 
-
+    @profile()
     def __init__(self, *args, class_name="测试班级", current_user=DEFAULT_USER, class_key="CLASS_TEST"):
         """窗口初始化
 
@@ -731,7 +757,8 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         Thread(target=self.show_hints, daemon=True, name="HintsDisplayer").start()
         Thread(target=self.read_video, daemon=True, name="VideoReader").start()
         Thread(target=self._refresh_logwindow, daemon=True, name="RefreshLogWindow").start()
-        self.TipHandler(self).start()
+        self.tip_handler = self.TipHandler(self)
+        self.tip_handler.start()
         self.logwindow_content:List[str] = ["这里是日志"]
         self.auto_saving = False
         self.setWindowTitle(f"班寄管理 - {self.target_class.name}")
@@ -966,7 +993,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         def __init__(self, parent:"MainWindow"):
             super().__init__(parent)
             self._parent = parent
-
+        @profile()
         def run(self):
             Base.log("I", "提示处理器线程被启动", "MainWindow.TipHandler")
             while not self._parent.is_running:
@@ -1136,10 +1163,10 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
             return
         if not os.path.isfile("background.mp4"):
             Base.log("W", "没有找到视频文件，将使用默认动态背景", "MainWindow.read_video")
-            if os.path.isfile("audio/video/default/bakcground.mp4"):
-                if os.path.isdir("audio/video/default/bakcground.mp4"):
-                    os.rmdir("audio/video/default/bakcground.mp4")
-                shutil_copy("audio/video/default/bakcground.mp4", "background.mp4")
+            if os.path.isfile("audio/video/default/background.mp4"):
+                if os.path.isdir("audio/video/default/background.mp4"):
+                    os.rmdir("audio/video/default/background.mp4")
+                shutil_copy("audio/video/default/background.mp4", "background.mp4")
             
                 self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
                 "当前已经复制默认视频文件到根目录，如果需要使用其他动态背景直接替换background.mp4即可")
@@ -1147,7 +1174,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
                 self.warning("提示", "动态背景需要要视频文件（background.mp4），请检查文件是否存在\n"
                 "如果需要使用动态背景将background.mp4复制到工具的根目录即可")
             self.use_animate_background = False
-            while not os.path.isfile("bakcground.mp4"):
+            while not os.path.isfile("background.mp4"):
                 time.sleep(5)
         while self.is_running:
             self.capture = cv2.VideoCapture("background.mp4")
@@ -1692,7 +1719,7 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
 
 
     @Slot()
-    @as_command("open_setting_window", "打开设置窗口")
+    @as_command("open_setting_window", "设置窗口")
     def open_setting_window(self):
         """设置窗口"""
         Base.log("I", "打开设置窗口", "MainWindow.setting_window")
@@ -2224,6 +2251,9 @@ class MainWindow(ClassObj, MainClassWindow.Ui_MainWindow, MyMainWindow):
         self.show()
         status = self.app.exec()
         Base.log("I", "主窗口关闭", "MainWindow")
+        self.app.quit()
+        self.updator_thread.terminate()
+        self.tip_handler.terminate()
         return status
     
 
@@ -4961,8 +4991,10 @@ print("数量:", DataObject.saved_objects)
 print("速率:", (DataObject.saved_objects / (time.time() - t)))""", "测试保存数据分组"),
 
 ("""\
-for _ in range(114):
-    self.send_modify("wearing_bad", list(self.target_class.students.values()))
+self.achievement_obs.stop()
+for i in range(15):
+    for _ in range(114):
+        self.send_modify("wearing_bad", list(self.target_class.students.values()))
 """, "大数据测试")
         ]   
         self.comboBox.clear()
@@ -5092,22 +5124,9 @@ for _ in range(114):
 
 
 
-try:
-    from memory_profiler import profile, memory_usage
-except ImportError:
-    warnings.warn("memory_profiler模块未安装, 相关性能分析功能将被禁用", RuntimeWarning)
-    def profile(precision=4):   # NOSONAR; NOQA: disable=unused-argument
-        def decorator(func):
-            return func
-        return decorator
-    
-    def memory_usage(*args, **kwargs): # NOSONAR; NOQA: disable=unused-argument
-        return [0]
-    
-    Base.log("W", "memory_profiler模块未安装,相关性能分析功能将被禁用")
 
 
-# @profile(precision=4)
+@profile(precision=4)
 def main():
     global widget
     # 登录模块写在这里，用户名存在current_user里面就行

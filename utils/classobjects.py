@@ -25,6 +25,7 @@ from utils.classdtypes import (Student, DummyStudent, StrippedStudent,
         Achievement, AchievementTemplate, HomeworkRule, DayRecord, Day,
         ClassData, History, ClassObj)
 from utils.dataloader import Chunk, DataObject, UserDataBase 
+from utils.base import gen_uuid
 
 debug = True
 
@@ -86,6 +87,7 @@ def utc(precision:int=3):
     :return: 指定精度的时间戳整数
     """
     return int(time.time() * pow(10, precision))
+
 
 
 
@@ -1048,6 +1050,7 @@ class ClassObj(ClassObj):
         self.last_reset = time.time()
         self.weekday_record = []
         self.current_day_attendance = ClassObj.AttendanceInfo(self.target_class.key)
+        ClassObj.archive_uuid = gen_uuid()
         return self.classes
 
     def random_choose_stu(self, 
@@ -1436,11 +1439,11 @@ class AchievementStatusObserver(Object):
                         last_frame_time = time.time()
                         for s in list(self.classes[self.class_id].students.values()): # 性能优化点：O(n²)复杂度(?)
                             for a in list(self.achievement_templates.keys()):
-                                if self.achievement_templates[a].achieved(s, self.class_obs) and (
+                                if self.achievement_templates[a].achieved_by(s, self.class_obs) and (
                                     self.achievement_templates[a].key not in 
                                     [a.temp.key for a in self.classes[self.class_id].students[s.num].achievements.values()]):
                                     time.sleep(0.1) # 等待操作完成，避免竞态条件
-                                    if self.achievement_templates[a].achieved(s, self.class_obs):
+                                    if self.achievement_templates[a].achieved_by(s, self.class_obs):
                                         Base.log("I", F"[{s.name}] 达成了成就 [{self.achievement_templates[a].name}]")
                                         a2 = ClassObj.Achievement(self.achievement_templates[a], s)
                                         a2.give()

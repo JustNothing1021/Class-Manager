@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import zipfile
 import sqlite3
 import shutil
+import sys
 
 
 # 数据加载器
@@ -14,20 +15,8 @@ class NullParam:
 
 BaseDataType = Union[int, float, bool, str]
 
-_UT = TypeVar("_UT")
 
-class UUIDKind(Generic[_UT], str):
-    "uuid类型, UUIDKind[Student]代表这个uuid可以加载出一个学牲"
-    def __init__(self, uuid: str):
-        self.uuid = uuid
-    def __hash__(self):
-        return hash(self.uuid)
-    def __eq__(self, other):
-        return isinstance(other, UUIDKind) and self.uuid == other.uuid
-    def __repr__(self):
-        return f"UUIDKind({self.uuid})"
-    def __str__(self):
-        return self.uuid
+
 
 
 
@@ -36,7 +25,9 @@ _RT = TypeVar("_RT", Student, Class, Group,
                       ScoreModification, ScoreModificationTemplate,
                       Achievement, AchievementTemplate, 
                       DayRecord)
-class DataKind(Generic[_UT], str):
+
+
+class DataKind(Generic[_RT], str):
     "数据类型, DataKind[Student]代表这个对象在被访问之后会变成一个对象"
     
     def __init__(self, instance: _RT, bound_chunk: "Chunk", 
@@ -61,14 +52,22 @@ class DataKind(Generic[_UT], str):
             try:
                 return DataObject.loaded_object_list[self.history_uuid][self.data_type.chunk_type_name][value.uuid]
             except KeyError:
-                # TODO: 给ClassDataType全部写上load_from_string方法
-                obj = self.data_type.load_from_string(
+                obj = self.data_type.from_string(
                     self.chunk.get_object_rdata(self.history_uuid, value.uuid, self.data_type.chunk_type_name))
                 DataObject.loaded_object_list[self.history_uuid][self.data_type.chunk_type_name][value.uuid] = obj
                 setattr(self.instance, item, obj)
                 return obj
         else:
             return value
+
+
+
+_RDT = TypeVar("_RDT", Student, Class, Group, 
+                      AttendanceInfo, 
+                      ScoreModification, ScoreModificationTemplate,
+                      Achievement, AchievementTemplate, 
+                      DayRecord)
+
 
 
 _NT = TypeVar("_NT")
@@ -232,17 +231,18 @@ class DataObject:
 
 
     
-    def load_stage1(self, path: str) -> List[Exception]:
+    def load_stage1(self, data: str) -> ClassDataType:
         "从某个文件加载这个对象，阶段1 - 只加载基本数据"
-        with open(path, "rb") as file:
-            string = base64.b64decode(file.read())
-        data: Dict[str, BaseDataType] = json.loads(string.decode())
+
+        data: Dict[str, Any] = json.loads(data)
+
         try:
-            data_type = data["type"]
+            data_type = data.pop("type")        # 移除类型信息避免参数错误
         except KeyError as e:
-            raise KeyError(F"来自{path!r}的对象没有具体的数据类型！") from e
+            raise KeyError("对象没有具体的数据类型！") from e
         
-        data.pop("type")        # 移除类型信息避免参数错误
+        uuid = data.pop("uuid")
+        archive_uuid = data.pop("archive_uuid")
 
         if data_type == Student.chunk_type_name:
             self.student_history: List[UUIDKind[ScoreModification]] = data.pop("history")
@@ -262,15 +262,17 @@ class DataObject:
             self.object_load_state = "detached"
 
         elif data_type == ScoreModificationTemplate.chunk_type_name:
-            self.object = Group(**data)
+            self.object = ScoreModificationTemplate(**data)
             self.object_load_state = "normal" # 默认加载状态，无需手动连接
 
         elif data_type == ScoreModification.chunk_type_name:
             self.modify_temp: UUIDKind[ScoreModificationTemplate] = data.pop("template")
             self.modify_target: UUIDKind[Student] = data.pop("target")
+            self.modify_execute_time_key: int = data.pop("execute_time_key")
             data["template"] = default_score_template
             data["target"] = default_student
             self.object = ScoreModification(**data)
+            self.object.execute_time_key = self.modify_execute_time_key
             self.object_load_state = "detached"
 
         elif data_type == HomeworkRule.chunk_type_name:
@@ -340,6 +342,10 @@ class DataObject:
             self.object = History(**data)
             self.object_load_state = "detached"
 
+        self.object.uuid = uuid
+        self.archive_uuid = archive_uuid
+        return self
+
 
 _LT = TypeVar("_LT")
 def spilt_list(lst: Iterable[_LT], slices: int, max_size: Optional[int] = None, min_size: Optional[int] = None) -> List[List[_LT]]:
@@ -391,6 +397,77 @@ class Chunk:
             raise ValueError("数据不存在")
         return result[0]
 
+
+    def load_history(self, history_uuid: Union[UUIDKind[History], Literal["Current"]] = "Current") -> History:
+        """加载历史记录。
+
+        :param history_uuid: 历史记录uuid
+        :return: 历史记录
+        :raise ValueError: 历史记录不存在
+        """
+        def _load_object(uuid: UUIDKind[_DT], data_type: ClassDataType) -> _DT:
+            try:
+                # 尝试直接从缓存中获取
+                obj = DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid]
+                sys.__stdout__.write(f"直接读取了一个{obj.__class__.__name__}对象，uuid为{uuid}\n")
+                return obj
+
+            except KeyError:
+                # 如果不存在的话就从数据库读取
+                try:
+                    # 从连接池获取连接
+                    conn = self.database_connections[history_uuid][data_type.chunk_type_name][uuid[:1]]
+                except KeyError:    
+                    # 如果没连接就直接开一个新的连接放连接池，不用反复开开关关的节约性能（加载完记得relase_connections，清理内存）
+                    conn = sqlite3.connect(
+                        os.path.join(path, data_type.chunk_type_name, f"spilt_{uuid[:1]}.db"), 
+                        check_same_thread=False)
+                    self.database_connections[history_uuid] = {} if history_uuid not in self.database_connections else self.database_connections[history_uuid]
+                    self.database_connections[history_uuid][data_type.chunk_type_name] = {} if data_type.chunk_type_name not in self.database_connections[history_uuid] else self.database_connections[history_uuid][data_type.chunk_type_name]
+                    self.database_connections[history_uuid][data_type.chunk_type_name][uuid[:1]] = conn
+
+
+                result = conn.execute("SELECT data FROM datas WHERE uuid = ?", (uuid,)).fetchone()
+                if result is None:
+                    raise ValueError("数据不存在")
+                DataObject.loaded_object_list[history_uuid] = {} if history_uuid not in DataObject.loaded_object_list else DataObject.loaded_object_list[history_uuid]
+                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name] = {} if data_type.chunk_type_name not in DataObject.loaded_object_list[history_uuid] else DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name]
+                # obj_shallow_loaded = DataObject(None, self).load_stage1(result[0])
+                # 先浅层加载一下，防止触发无限递归
+                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid] = data_type.dummy
+                obj = data_type.from_string(result[0])
+                # 再深层处理，这样就不用担心了
+                DataObject.loaded_object_list[history_uuid][data_type.chunk_type_name][uuid] = obj
+                sys.__stdout__.write(f"读取了一个{obj.__class__.chunk_type_name}对象，uuid为{uuid}\n")
+                return obj
+        ClassObj.LoadUUID = _load_object
+        if history_uuid == "Current":
+            path = os.path.join(self.path, "Current")
+        else:
+            path = os.path.join(self.path, "Histories", history_uuid[:2], history_uuid[2:])
+        if not os.path.isdir(path):
+            raise ValueError("历史记录不存在")
+        class_uuids = json.load(open(os.path.join(path, "classes.json"), "r", encoding="utf-8"))
+        weekday_uuids = json.load(open(os.path.join(path, "weekdays.json"), "r", encoding="utf-8"))
+        classes = {}
+        for key, class_uuid in class_uuids:
+            _class: Class = ClassObj.LoadUUID(class_uuid, Class)
+            classes[_class.key] = _class
+
+        for key, weekday_uuid in weekday_uuids:
+            weekday: DayRecord = ClassObj.LoadUUID(weekday_uuid, DayRecord)
+            self.bound_data.weekday_record[weekday.utc] = weekday
+
+        history = History(classes, self.bound_data.weekday_record, 
+                        json.load(open(os.path.join(path, "info.json"), "r", encoding="utf-8"))["save_time"])
+        
+        return history
+        
+        
+
+
+
+
     def relase_connections(self) -> None:
         """释放所有连接"""
         for v in self.database_connections.values():
@@ -434,7 +511,7 @@ class Chunk:
             if uuid != "Current":
                 path = os.path.join(self.path, "Histories", uuid[:2], uuid[2:])
             else:
-                path = os.path.join(self.path, "Histories", "Current")
+                path = os.path.join(self.path, "Current")
             if clear:
                 shutil.rmtree(path, ignore_errors=True)
             os.makedirs(path, exist_ok=True)
@@ -448,13 +525,33 @@ class Chunk:
             modifies: List[ScoreModification] = []
             achievements: List[Achievement] = []
             groups: List[Group] = []
+            classes: List[Class] = []
             for _class in current_history.classes.values():
+                classes.append(_class)
                 for student in _class.students.values():
                     students.append(student)
                     modifies.extend(student.history.values())
                     achievements.extend(student.achievements.values())
+                    i = 0
+                    while student.last_reset_info:
+                        students.append(student.last_reset_info)
+                        modifies.extend(student.last_reset_info.history.values())
+                        achievements.extend(student.last_reset_info.achievements.values())
+                        i += 1
+                        student.last_reset_info = None
+                        if i > Student.last_reset_info_keep_times:
+                            break
+
                 groups.extend(_class.groups.values())
             Base.log("D", F"历史记录中的{uuid}的数据汇总完成，耗时{time.time() - t}秒", "Chunk.save")
+            t = time.time()
+            c = 0
+            for _class in classes:
+                DataObject(_class, self).save(path)
+                c += 1
+                total_objects += 1
+            c = max(1, c)
+            Base.log("D", F"历史记录中的{uuid}的班级保存完成，耗时{time.time() - t}秒，共{c}个，速率{c / (time.time() - t if (time.time() - t) > 0 else 1): .3f}个/秒", "Chunk.save")
             t = time.time()
             c = 0
             for student in students:
@@ -536,6 +633,11 @@ class Chunk:
                 open(os.path.join(path, "info.json"), "w", encoding="utf-8"),
                 indent=4
             )
+            json.dump([(c.key, c.uuid) for c in current_history.classes.values()], 
+                    open(os.path.join(path, "classes.json"), "w", encoding="utf-8"), indent=4)
+            json.dump([(d.utc, d.uuid) for d in current_history.weekdays.values()],
+                    open(os.path.join(path, "weekdays.json"), "w", encoding="utf-8"), indent=4)
+
             Base.log("I", f"{uuid}的存档信息保存完成({index}/{total})", "Chunk.save")
         i = 1
         for uuid, current_history, clear in save_tasks:

@@ -137,27 +137,44 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# 别把我测试的东西传进去了
+# 测试文件
 /boom/
+
+# 存档/备份文件
 /backups/
 /chunks/
+
+# 更新目录
 /update.*
 /update/
+
+# 背景文件
 /background.*
 /img/main/background.jpg
+
+# 日志文件
 /log/
+
+# 自定义default和login
 /utils/default.py
 /utils/login.py
+
+# 音乐文件
 /audio/music/*
 /.vscode/
 /demo*.py
 /tool/
 /log_buffered.txt
 /backup_tmp/
+
+# 用户信息
+/user_info.*
+/last_usr.*
+
+# 编译的配置文件/生成文件
+/_internal
+/compile.conf
+/ClassManager
 /main.exe
 /main.zip
 /main/
-/_internal
-/user_info.*
-/last_usr.*
-/complie.conf
