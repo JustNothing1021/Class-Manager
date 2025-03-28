@@ -715,7 +715,7 @@ class Object(object):
     @uuid.setter
     def uuid(self, value):
         "设置对象的UUID"
-        Base.log("I", f"设置对象{self!r}的UUID: {self.uuid} -> {value}", "Object.uuid.setter")
+        # Base.log("I", f"设置对象{self!r}的UUID: {self.uuid} -> {value}", "Object.uuid.setter")
         self._uuid = value
 
     @uuid.deleter

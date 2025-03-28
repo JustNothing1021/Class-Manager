@@ -97,7 +97,7 @@ class ClassObj(Base):
 
     class OpreationError(Exception):"修改出现错误。"
 
-    LoadUUID: Callable[[UUIDKind[ClassDataType]], ClassDataType]
+    LoadUUID: Callable[[UUIDKind[ClassDataType], Type[ClassDataType], Optional[UUIDKind["History"]]], ClassDataType]
     "加载uuid的函数，传入一个uuid和数据类型，返回一个ClassDataType，在utils.dataloader里面实现"
 
 
@@ -1447,6 +1447,13 @@ class ClassObj(Base):
                 except BaseException:
                     Base.log_exc(f"位于成就{self.name}({self.key})的lambda函数出错：", "AchievementTemplate.achieved")
                     if self.key in class_obs.base.DEFAULT_ACHIEVEMENTS:
+                        if isinstance(self.other, list):
+                            if not isinstance(self.other[0], Callable):
+                                # 还没加载，先跳过
+                                return False
+                            # 还没加载，先跳过
+                        elif isinstance(self.other, str):
+                            return False                        
                         self.other = class_obs.base.DEFAULT_ACHIEVEMENTS[self.key].other
                         Base.log("I", "已经重置为默认值", "AchievementTemplate.achieved")
                     else:
@@ -1554,7 +1561,7 @@ class ClassObj(Base):
             obj = {"type": self.chunk_type_name}
             obj.update(self.kwargs)
             if "others" in obj:
-                obj["others"] = str(base64.b64encode(pickle.dumps(obj["others"])))
+                obj["others"] = base64.b64encode(pickle.dumps(obj["others"])).decode()
             obj["uuid"] = self.uuid
             obj["archive_uuid"] = self.archive_uuid
             return json.dumps(obj)
@@ -1566,8 +1573,8 @@ class ClassObj(Base):
             d: Dict[str, Any] = json.loads(string)
             if d["type"] != AchievementTemplate.chunk_type_name:
                 raise ValueError(f"类型不匹配：{d['type']} != {AchievementTemplate.chunk_type_name}")
-            if "other" in d:
-                d["other"] = pickle.loads(base64.b64decode(d["other"]))
+            if "others" in d:
+                d["others"] = pickle.loads(base64.b64decode(d["others"]))
             d.pop("type")
             uuid = d.pop("uuid")
             archive_uuid = d.pop("archive_uuid")

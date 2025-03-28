@@ -2556,7 +2556,7 @@ class RecoveryPoint:
         # if mode == "all":
         #     return os.path.join(self.path, "chunks",  current_user, "classes.datas")
         # elif mode == "only_data":
-        return os.path.join(self.path, "chunks",  current_user, "classes.datas")
+        return os.path.join(self.path, "chunks",  current_user)
 
     def exists(self):
         """检查是否存在"""

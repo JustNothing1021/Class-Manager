@@ -1,7 +1,8 @@
 import random
+import time
 from PySide6.QtCore    import Property, QPropertyAnimation, QCoreApplication, Qt, QRectF, QEasingCurve
 from PySide6.QtGui     import QColor, QIcon, QPixmap, QMouseEvent, QPaintEvent, QPainter, QPen
-from PySide6.QtCore    import QPoint, QTimer, Slot
+from PySide6.QtCore    import QPoint, QTimer, Slot, QThread
 from PySide6.QtWidgets import QPushButton, QGraphicsOpacityEffect, QWidget, QMessageBox
 from PySide6.QtWidgets import QListWidget, QMainWindow, QVBoxLayout, QListWidgetItem
 from PySide6.QtWidgets import QMainWindow, QLabel
@@ -10,6 +11,7 @@ from utils.classdtypes import Base, Thread
 from utils.classdtypes import Student, Group
 from utils.settings    import SettingsInfo
 from utils.functions   import play_sound
+
 
 class ObjectButton(QPushButton):
         """学生按钮类，用于在界面上显示学生信息的交互按钮"""
@@ -412,7 +414,7 @@ from qfluentwidgets import InfoBar, InfoBarPosition
 #         return f"SideNotice(text={repr(self.notice_text)}, index={self.index}, slot={self.slot})"
     
 
-class SideNotice(QWidget):
+class SideNotice(QWidget, QThread):
     "侧边栏通知"
     total = 0
     current = 0
@@ -480,9 +482,18 @@ class SideNotice(QWidget):
                 self.notice_close()
             self.click_command()
         return super().mousePressEvent(event)
-        
     
+    
+    def run(self):
+        self._show()
+
     def show(self, slot: Optional[int] = None):
+        Base.log("D", f"正在显示提示 (文本: {repr(self.notice_text)})", "SideNotice.show")
+        self._slot = slot
+        self.start()
+
+    def _show(self):
+        slot = self._slot
         if slot is not None:
             self.slot = slot
         self.is_waiting = True
@@ -501,7 +512,7 @@ class SideNotice(QWidget):
                         #     if SideNotice.waiting != [] and not SideNotice.waiting[0].showing and all([SideNotice.waiting[0].index <= n.index for n in SideNotice.waiting]) and len(self.master.sidenotice_avilable_slots):
                         #         SideNotice.waiting[0].show()
                             
-                        QCoreApplication.processEvents()
+                        time.sleep(0.01)
                     except BaseException:
                         pass
                     if self.slot != -1:

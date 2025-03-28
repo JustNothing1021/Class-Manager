@@ -96,35 +96,58 @@ class ClassObj(ClassObj):
 
 
     @staticmethod
-    def load_data(path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas", silent:bool=False, strict=True) -> dict:
+    def load_data(path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/", 
+                silent:bool=False, strict=True, 
+                method: Literal["pickle", "sqlite", "auto"] = "sqlite",
+                load_full_histories: bool = False) -> UserDataBase:
         """从文件加载存档。（只是返回数据！！）
         
         :param path: 文件路径
         :param silent: 是否静默加载
         :param strict: 是否抛出错误
+        :param method: 加载方法，可以是"pickle"，"sqlite"或"auto"
+        :param load_full_histories: 是否加载完整历史记录，只在method="sqlite"时有效
         :return: 存档数据
         """
         start = time.time()
         if not silent:
             Base.log("I","从"+path+"加载数据...","MainThread.save_data")
-        
+        if method == "auto":
+            dirpath = os.path.dirname(path)
+            if os.path.exists(os.path.join(dirpath, "info.json")):
+                path = dirpath
+                method = "sqlite"
+            else:
+                method = "pickle"
+
         try:
-            b = base64.b85decode(open(path, "r").read())
-            f = open(path+".tmp", "wb")
-            f.write(b)
-            f.close()
-            try:
-                data = pickle.load(open(path + ".tmp", "rb"))
-            except (AttributeError):
-                data = pickle_orig.load(open(path + ".tmp", "rb"))
-            try:
-                os.remove(path+".tmp")
-            except BaseException:
-                pass
-            if not silent:
-                Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
-            return data
-        
+            if method == "pickle":
+                b = base64.b85decode(open(path, "r").read())
+                f = open(path+".tmp", "wb")
+                f.write(b)
+                f.close()
+                try:
+                    data = pickle.load(open(path + ".tmp", "rb"))
+                except (AttributeError):
+                    data = pickle_orig.load(open(path + ".tmp", "rb"))
+                try:
+                    os.remove(path+".tmp")
+                except BaseException:
+                    pass
+                if not silent:
+                    Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
+                return UserDataBase(**data)
+
+                
+            elif method == "sqlite":
+                path = os.path.dirname(path)
+                data_chunk = Chunk(path)
+                data = data_chunk.load_data()
+                if not silent:
+                    Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
+                return data
+
+            
         except FileNotFoundError:
             if strict:
                 raise
@@ -134,13 +157,12 @@ class ClassObj(ClassObj):
             Base.log("I","重新加载...","MainThread.load_data")
 
             return ClassObj.load_data(path, strict=True)
-            
+                
 
         except Exception as e:
             if strict:
                 raise
             Base.log_exc("读取存档" + path + "失败：", "Mainhread.load_data")
-            Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
             Base.log("I", F"耗时：{time.time()-start:.2f}", "MainThread.load_data")
             import errno
             if isinstance(e, OSError):
@@ -264,8 +286,8 @@ class ClassObj(ClassObj):
         :param reset_existing: 是否把默认数据（比如当前不存在的模板和成就）加入到现有数据中
         """
         data = ClassObj.load_data(path, silent, strict)
-        self.save_version = data["version"]
-        self.save_version_code = data["version_code"]
+        self.save_version = data.version
+        self.save_version_code = data.version_code
         self.currrent_core_version = CORE_VERSION
         self.current_core_version_code = CORE_VERSION_CODE
 
@@ -275,10 +297,9 @@ class ClassObj(ClassObj):
         elif self.save_version_code < self.current_core_version_code:
             Base.log("I", "尝试加载旧版本的存档，缺失的数据已经用默认代替", "ClassObjects.load_data_and_set")
 
-        self.classes:Dict[str, "ClassObj.Class"] = data["classes"]
+        self.classes:Dict[str, "ClassObj.Class"] = data.classes
         if isinstance(self.classes, OrderedKeyList):
             self.classes = self.classes.to_dict() # 转换为字典解决类型问题
-                                                  # TODO:修复OrderedKeyList相关问题
 
         if hasattr(self, "target_class") and self.target_class is not None:
             self.target_class = self.classes[self.target_class.key]
@@ -286,10 +307,9 @@ class ClassObj(ClassObj):
             self.target_class = None
 
         self.achievement_templates: "Union[OrderedKeyList[ClassObj.AchievementTemplate], Dict[str, ClassObj.AchievementTemplate]]" \
-            = OrderedKeyList(data["achievements"]).to_dict()  # 转换为字典
-                                                              # TODO:搜索算法优化
+            = OrderedKeyList(data.achievements).to_dict()  # 转换为字典
         self.modify_templates: "Union[OrderedKeyList[ClassObj.ScoreModificationTemplate], Dict[str, ClassObj.ScoreModificationTemplate]]" \
-            =  OrderedKeyList(data["templates"])
+            =  OrderedKeyList(data.templates).to_dict()
 
 
             
@@ -359,28 +379,28 @@ class ClassObj(ClassObj):
             self.reset_missing()
 
         if "last_reset" in data:
-            self.last_reset = data["last_reset"]
+            self.last_reset = data.last_reset
         else:
-            self.last_reset = time.localtime(0)
+            self.last_reset = 0.0
 
         if "history_data" in data:
-            self.history_data = data["history_data"]
+            self.history_data = data.history_data
         else:
             self.history_data = {}                    
 
 
         if "last_start_time" in data:
-            self.last_start_time = data["last_start_time"]
+            self.last_start_time = data.last_start_time
         else:
             self.last_start_time = time.time()
 
         if "weekday_record" in data:
-            self.weekday_record:List[ClassObj.DayRecord] = [day for day in data["weekday_record"] if day.utc > 1000000000]
+            self.weekday_record:List[ClassObj.DayRecord] = [day for day in data.weekday_record if day.utc > 1000000000]
         else:
             self.weekday_record = []
 
         if "current_day_attendance" in data:
-            self.current_day_attendance = data["current_day_attendance"]
+            self.current_day_attendance = data.current_day_attendance
         else:
             self.current_day_attendance = ClassObj.AttendanceInfo(
                 self.target_class.key, [], [], [], [], [], [], []
@@ -433,8 +453,8 @@ class ClassObj(ClassObj):
         self.class_id = class_id
         self.target_class = self.classes[self.class_id]
         self.class_obs = ClassStatusObserver(self, class_id, class_obs_tps)
-        self.class_obs.start()
         self.achievement_obs = AchievementStatusObserver(self, class_id, tps=achievement_obs_tps)
+        self.class_obs.start()
         self.achievement_obs.start()
         self.groups = self.target_class.groups
         "本班小组"
@@ -456,12 +476,15 @@ class ClassObj(ClassObj):
                          achievements:Dict[str, AchievementTemplate],
                          last_start_time:float,
                          weekday_record:List[DayRecord],
-                         current_day_attenance:AttendanceInfo,
-                         path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas"):
+                         current_day_attendance:AttendanceInfo,
+                         *,
+                         path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas",
+                         mode: Literal["pickle", "sqlite"] = "sqlite"):
         """强制以指定数据保存存档。
         
         :param path: 文件路径
         """
+        
         Base.log("I","保存数据到"+path+"...","MainThread.save_data_strict")
         st = time.time()
         try:
@@ -481,31 +504,53 @@ class ClassObj(ClassObj):
                 "achievements":achievements,
                 "last_start_time":last_start_time,
                 "weekday_record":weekday_record,
-                "current_day_attendance":current_day_attenance
+                "current_day_attendance":current_day_attendance
             }
+            database = UserDataBase(user,
+                                    save_time,
+                                    version,
+                                    version_code,
+                                    last_reset,
+                                    history_data,
+                                    classes,
+                                    templates,
+                                    achievements,
+                                    last_start_time,
+                                    weekday_record,
+                                    current_day_attendance
+                                    )
+            if mode == "sqlite":
+                path = os.path.dirname(path)
+                chunk = Chunk(path, database)
+                t = time.time()
+                chunk.save()
+                Base.log("I", F"写入文件完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
+                Base.log("I","保存数据到"+path+f"完成，总时间：{time.time()-st:.3f}","MainThread.save_data_strict")
 
-            t = time.time()
-            b = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
-            Base.log("I", F"读取内存完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
 
-            t = time.time()
-            b2 = base64.b85encode(b)
-            Base.log("I", F"编码完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
+            elif mode == "pickle":
+                t = time.time()
+                b = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
+                Base.log("I", F"读取内存完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
 
-            t = time.time()
-            b = open(path, "wb")    
-            b.write(b2)
-            b.close()
-            Base.log("I", F"写入文件完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
+                t = time.time()
+                b2 = base64.b85encode(b)
+                Base.log("I", F"编码完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
 
-            Base.log("I","保存数据到"+path+f"完成，总时间：{time.time()-st:.3f}","MainThread.save_data_strict")
+                t = time.time()
+                b = open(path, "wb")    
+                b.write(b2)
+                b.close()
+                Base.log("I", F"写入文件完成 ({time.time()-t:.3f}s)", "MainThread.save_data_strict")
+
+                Base.log("I","保存数据到"+path+f"完成，总时间：{time.time()-st:.3f}","MainThread.save_data_strict")
 
         except BaseException:
             Base.log_exc("保存存档"+path+"失败：", "Mainhread.save_data_strict")
             raise
 
     
-    def save_data(self, path:str=None):
+    def save_data(self, path:str=None, mode: Literal["pickle", "sqlite"] = "sqlite"):
         """保存当前存档。
         
         :param path: 文件路径
@@ -525,7 +570,8 @@ class ClassObj(ClassObj):
             self.last_start_time,
             self.weekday_record,
             self.current_day_attendance,
-            path
+            path=path,
+            mode=mode
         )
 
     @property
@@ -546,7 +592,7 @@ class ClassObj(ClassObj):
         )
         
     @staticmethod
-    def reset_data(path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas"):
+    def reset_data(path:str=os.getcwd() + os.sep + f"chunks/{DEFAULT_USER}/classes.datas", mode: Literal["pickle", "sqlite"] = "sqlite"):
         """重置存档。
         
         :param path: 存档路径"""
@@ -565,7 +611,8 @@ class ClassObj(ClassObj):
             time.time(),
             [],
             ClassObj.AttendanceInfo(default_class_key).copy(),
-            path
+            path=path,
+            mode=mode
         )
         
     def stop(self):
@@ -1459,7 +1506,7 @@ class AchievementStatusObserver(Object):
                     try:
                         if not self.display_achievement_queue.empty():
                             item = self.display_achievement_queue.get()
-                            Base.log("D", f"队列添加：{item}", "AchievementStatusObserver.display_thread")
+                            # Base.log("D", f"队列添加：{item}", "AchievementStatusObserver.display_thread")
                             self.achievement_displayer(item["achievement"], item["student"])
                             # time.sleep(0.2)
                         time.sleep(0.1)
