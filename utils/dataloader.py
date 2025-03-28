@@ -170,23 +170,26 @@ class DataObject:
     load_tasks: List[Tuple[UUIDKind[History], str, UUIDKind[ClassDataType]]] = []
     "加载任务列表"
 
-    def clear_tasks(self):
+    @staticmethod
+    def clear_tasks():
         "清空加载任务列表"
-        self.load_tasks.clear()
+        DataObject.load_tasks.clear()
 
-    def clear_loaded_objects(self):
+    @staticmethod
+    def clear_loaded_objects():
         "清空加载对象列表"
-        self.loaded_object_list.clear()
+        DataObject.loaded_object_list.clear()
 
-    def relase_connections(self):
+    @staticmethod
+    def relase_connections():
         "释放所有连接"
-        for conn in self.conn_list.values():
+        for conn in DataObject.conn_list.values():
             for c in conn.values():
                 try:
                     c.close()
                 except:
                     pass
-        self.conn_list.clear()
+        DataObject.conn_list.clear()
 
 
 
